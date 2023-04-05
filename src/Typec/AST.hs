@@ -40,7 +40,10 @@ instance Show Prog where
 
 instance Show Comb where
   show (i := e) = show i <> " = " <> show e
-  show (Fun i as e ss) = show i <> " " <> unwords (fmap show as) <> " = " <> show e <> Data.List.intercalate "\n" (fmap show ss)
+  show (Fun i as e cs) = show i <> " " <> unwords (fmap show as) <> " = " <> show e <> showCombs cs 
+   where showCombs ss = if null ss
+                        then ""
+                        else "\n where\n  " <> Data.List.intercalate "\n  " (fmap show ss)
 
 instance Show Id where
   show (Id s) = s
@@ -51,17 +54,21 @@ instance Show Exp where
                     x :- y -> showParen (n > 5) $ showsPrec 5 x . showString " - " . showsPrec 6 y
                     x :* y -> showParen (n > 6) $ showsPrec 6 x . showString " * " . showsPrec 7 y
                     x :/ y -> showParen (n > 6) $ showsPrec 6 x . showString " / " . showsPrec 7 y
-                    Exe f es -> shows f . showSpace . showsArg es
+                    Exe f es -> shows f . showSpace . showArgs es
                     Var i -> shows i
                     Val v -> let i = round v
                               in if v == fromInteger i
                                  then shows i
                                  else shows v
-   where showsArg = foldr (.) id . intersperse showSpace . fmap shows
+   where
+    showArgs = foldr (.) id . intersperse showSpace . fmap showArg
+    showArg a = case a of
+                  Val _ -> shows a
+                  Var _ -> shows a
+                  _ -> showParen True (shows a)
 
 instance Num Exp where
   fromInteger = Val . fromInteger
-  negate (Val a) = Val (negate a)
 
 instance Fractional Exp where
   fromRational = Val . fromRational

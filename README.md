@@ -1,8 +1,9 @@
 ## typec - Language with Types
 
-- migrate from numc
++ migrate from numc
 
 - update semantics
+
 - tree-walk interpreter
 - native codegen
 - functions

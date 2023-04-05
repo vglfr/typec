@@ -10,15 +10,15 @@ import Typec.AST (Exp ((:+), (:-), (:*), (:/), Exe))
 import Typec.Example
   (
     a1, a2, a3, a4
-  , b1, b2, b3, b4, b5, b6, b7, b8, b9
-  , e1, e2, e3, e4, e5
-  -- , f1, f2, f3, f4
+  , b1, b2, b3, b4, b7, b8
+  , e1, e2, e3, e4, e5, e6
+  , f1, f2, f3
   , i1, i2
   -- , m1, m2, m3, m4, m5, m6, m7
-  , v1, v2, v3
+  , v1, v2
   , w1, w2
   )
-import Typec.Parser (parseAss, parseExe, parseExp, parseId, parseVal, parseVar)
+import Typec.Parser (parseAss, parseExe, parseExp, parseFun, parseId, parseVal, parseVar)
 
 testParseId :: Spec
 testParseId = describe "Typec.Parser" $ do
@@ -75,7 +75,7 @@ testParseVal = describe "Typec.Parser" $ do
     parse "+5" `shouldBe` Just v1
 
   it "parseVal -5" $ do
-    parse "-5" `shouldBe` Just v3
+    show <$> parse "-5" `shouldBe` Just "-5"
 
   it "parseVal empty" $ do
     parse "" `shouldBe` Nothing
@@ -146,6 +146,15 @@ testParseExe = describe "Typec.Parser" $ do
 
   it "parseExe f x y" $ do
     parse "f x y" `shouldBe` Just e5
+
+  it "parseExe f 3 (5 + y) x" $ do
+    parse "f 3 (5 + y) x" `shouldBe` Just e6
+
+  it "parseExe f x y z a b c" $ do
+    parse "f x y z a b c" `shouldBe` Just (Exe "f" ("x" :| ["y", "z", "a", "b", "c"]))
+
+  it "parseExe f x (g a b) y" $ do
+    parse "f x (g a b) y" `shouldBe` Just (Exe "f" ("x" :| [Exe "g" ("a" :| ["b"]), "y"]))
 
   it "parseExe f" $ do
     parse "f" `shouldBe` Nothing
@@ -311,10 +320,10 @@ testParseExp = describe "Typec.Parser" $ do
     parse "(1 + 2" `shouldBe` Nothing
 
   it "parseExp -1 + 2" $ do
-    parse "-1 + 2" `shouldBe` Just b5
+    show <$> parse "-1 + 2" `shouldBe` Just "-1 + 2"
 
   it "parseExp 1 - -2" $ do
-    parse "1 - -2" `shouldBe` Just b6
+    show <$> parse "1 - -2" `shouldBe` Just "1 - -2"
 
   it "parseExp 5 + 1 - 3 + 6 * 2 / 4" $ do
     parse "5 + 1 - 3 + 6 * 2 / 4" `shouldBe` Just b7
@@ -323,7 +332,7 @@ testParseExp = describe "Typec.Parser" $ do
     parse "5 + f x 3 - 3" `shouldBe` Just b8
 
   it "parseExp 5 + f x (3 / y) - 3" $ do
-    parse "5 + f x (3 / y) - 3" `shouldBe` Just b9
+    show <$> parse "5 + f x (3 / y) - 3" `shouldBe` Just "5 + f x (3 / y) - 3"
 
   it "parseExp 5 + f x" $ do
     parse "5 + f x" `shouldBe` Just (5 :+ Exe "f" ("x" :| []))
@@ -335,33 +344,30 @@ testParseAss :: Spec
 testParseAss = describe "Typec.Parser" $ do
   let parse = foldResult (const Nothing) Just . parseString (parseAss <* eof) mempty
 
-  it "parseAss a1 x = 5" $ do
+  it "parseAss x = 5" $ do
     parse "x = 5" `shouldBe` Just a1
 
-  it "parseAss a2 x = 5 + 1 / 4 - 3 * 2" $ do
+  it "parseAss x = 5 + 1 / 4 - 3 * 2" $ do
     parse "x = 5 + 1 / 4 - 3 * 2" `shouldBe` Just a2
 
-  it "parseAss a3 x = 5 + y" $ do
+  it "parseAss x = 5 + y" $ do
     parse "x = 5 + y" `shouldBe` Just a3
 
-  it "parseAss a4 x = 5 + f y" $ do
+  it "parseAss x = 5 + f y" $ do
     parse "x = 5 + f y" `shouldBe` Just a4
 
--- testParseFun :: Spec
--- testParseFun = describe "Typec.Parser" $ do
---   let parse = foldResult (const Nothing) Just . parseString (parseFun <* eof) mempty
+testParseFun :: Spec
+testParseFun = describe "Typec.Parser" $ do
+  let parse = foldResult (const Nothing) Just . parseString (parseFun <* eof) mempty
 
---   it "parseFun f1 f(x) { (x + x) * x }" $ do
---     parse "f(x) { (x + x) * x }" `shouldBe` Just f1
+  it "parseFun f x = (x + x) * x" $ do
+    parse "f x = (x + x) * x" `shouldBe` Just f1
 
---   it "parseFun f2 f(x, y) { (x + y) * x / y }" $ do
---     parse "f(x, y) { (x + y) * x / y }" `shouldBe` Just f2
+  it "parseFun f x y = (x + y) * x / y" $ do
+    parse "f x y = (x + y) * x / y" `shouldBe` Just f2
 
---   it "parseFun f3 f(x, y) { x + 2; x / y }" $ do
---     parse "f(x, y) { x + 2; x / y }" `shouldBe` Just f3
-
---   it "parseFun f4 f() { 5 }" $ do
---     parse "f() { 5 }" `shouldBe` Just f4
+  it "parseFun f x y = g x + z\n where\n  g a = a / 2\n  z = y * 2" $ do
+    parse "f x y = g x + z\n where\n  g a = a / 2\n  z = y * 2" `shouldBe` Just f3
 
 -- Comb
 

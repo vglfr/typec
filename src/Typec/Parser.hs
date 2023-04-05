@@ -2,18 +2,22 @@ module Typec.Parser where
 
 import Control.Applicative ((<|>), some)
 import Data.List.NonEmpty (fromList)
+import Data.Maybe (fromMaybe)
+
+import Data.HashSet (singleton)
 import Text.Trifecta
   (
-    IdentifierStyle (IdentifierStyle), Parser, Result
-  , alphaNum, chainl1, char, ident, integerOrDouble, letter, parens, parseString, symbol, token, try
+    CharParsing, IdentifierStyle (IdentifierStyle), Parser, Result
+  , alphaNum, chainl1, char, ident, integerOrDouble, letter, optional, parens, parseString, reserve, symbol, token, try, semiSep1, eof
   )
 
-import Typec.AST (Prog, Comb ((:=)), Id (Id), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var))
+import Typec.AST (Prog (Prog), Comb ((:=), Fun), Id (Id), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var))
+
+idStyle :: CharParsing a => IdentifierStyle a
+idStyle = IdentifierStyle "id" (letter <|> char '_') (alphaNum <|> char '_') (singleton "where") minBound maxBound
 
 parseId :: Parser Id
-parseId = Id <$> ident style
- where
-  style = IdentifierStyle "id" (letter <|> char '_') (alphaNum <|> char '_') mempty minBound maxBound
+parseId = Id <$> ident idStyle
 
 parseVar :: Parser Exp
 parseVar = Var <$> parseId
@@ -24,7 +28,7 @@ parseVal = Val . either fromInteger id <$> integerOrDouble
 parseExe :: Parser Exp
 parseExe = do
   i <- parseId
-  as <- some parseExp
+  as <- some $ try parseVal <|> try parseVar <|> parens (try parseExe <|> parseExp)
   pure $ Exe i (fromList as)
 
 parseExp :: Parser Exp
@@ -46,19 +50,19 @@ parseAss = do
   pure $ v := e
 
 parseFun :: Parser Comb
-parseFun = undefined
--- parseFun = do
---   f <- parseVar
---   as <- parens $ sepBy parseVar comma
---   es <- braces $ semiSep parseBin
---   pure $ Fun f as es
+parseFun = do
+  i <- parseId
+  ps <- some parseId
+  _ <- token $ char '='
+  e <- parseExp
+  cs <- optional $ reserve idStyle "where" *> some parseComb
+  pure $ Fun i (fromList ps) e (fromMaybe [] cs)
 
 parseComb :: Parser Comb
-parseComb = undefined
+parseComb = try parseFun <|> parseAss
 
 parseProg :: Parser Prog
-parseProg = undefined
--- parseProg = semiSep (try parseFun <|> try parseAss <|> parseBin) <* eof
+parseProg = Prog . fromList <$> (semiSep1 parseComb <* eof)
 
 parse :: String -> Result Prog
 parse = parseString parseProg mempty

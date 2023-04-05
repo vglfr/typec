@@ -1,0 +1,70 @@
+cabal-version:   3.8
+name:            typec
+version:         0.0.1.0
+author:          vglfr
+maintainer:      vf.velt@gmail.com
+
+common common
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Werror
+    -Widentities
+    -Wincomplete-uni-patterns
+    -Wpartial-fields
+    -Wredundant-constraints
+  build-depends:
+      base == 4.17.*
+--    , filepath == 1.4.*
+--    , process == 1.6.*
+    , trifecta == 2.1.*
+
+library
+  import:
+    common
+  exposed-modules:
+      Typec.AST
+--    , Typec.Codegen
+--    , Typec.Compiler
+    , Typec.Example
+    , Typec.Parser
+  hs-source-dirs:
+    src
+
+executable tc
+  import:
+    common
+  build-depends:
+    typec
+  hs-source-dirs:
+    app
+  main-is:
+    Typec.hs
+
+executable ti
+  import:
+    common
+  build-depends:
+    typec
+  hs-source-dirs:
+    app
+  main-is:
+    Typei.hs
+
+test-suite typec
+  import:
+    common
+  build-depends:
+      typec
+    , hspec == 2.10.*
+    , QuickCheck == 2.14.*
+  hs-source-dirs:
+    test
+  main-is:
+    Main.hs
+  other-modules:
+--      AST
+--    , Compiler
+      Parser
+  type:
+    exitcode-stdio-1.0

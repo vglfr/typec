@@ -14,11 +14,11 @@ import Typec.Example
   , e1, e2, e3, e4, e5, e6
   , f1, f2, f3
   , i1, i2
-  -- , m1, m2, m3, m4, m5, m6, m7
+  , p1, p2, p3, p4
   , v1, v2
   , w1, w2
   )
-import Typec.Parser (parseAss, parseExe, parseExp, parseFun, parseId, parseVal, parseVar)
+import Typec.Parser (parseAss, parseComb, parseExe, parseExp, parseFun, parseId, parseProg, parseVal, parseVar)
 
 testParseId :: Spec
 testParseId = describe "Typec.Parser" $ do
@@ -366,32 +366,49 @@ testParseFun = describe "Typec.Parser" $ do
   it "parseFun f x y = (x + y) * x / y" $ do
     parse "f x y = (x + y) * x / y" `shouldBe` Just f2
 
-  it "parseFun f x y = g x + z\n where\n  g a = a / 2\n  z = y * 2" $ do
+  it "parseFun f x y = g x + z\\n where\\n  g a = a / 2\\n  z = y * 2" $ do
     parse "f x y = g x + z\n where\n  g a = a / 2\n  z = y * 2" `shouldBe` Just f3
 
--- Comb
+testParseComb :: Spec
+testParseComb = describe "Typec.Parser" $ do
+  let parse = foldResult (const Nothing) Just . parseString (parseComb <* eof) mempty
 
--- testParseProg :: Spec
--- testParseProg = describe "Typec.Parser" $ do
---   let parse = foldResult (const Nothing) Just . parseString (parseMod <* eof) mempty
+  it "parseComb x = 5" $ do
+    parse "x = 5" `shouldBe` Just a1
 
---   it "parseMod m1 4 - 3; 1 + 2" $ do
---     parse "4 - 3; 1 + 2" `shouldBe` Just m1
+  it "parseComb x = 5 + 1 / 4 - 3 * 2" $ do
+    parse "x = 5 + 1 / 4 - 3 * 2" `shouldBe` Just a2
 
---   it "parseMod m2 x = 5; x / 2; y = x * 2; x + 1 - y" $ do
---     parse "x = 5; x / 2; y = x * 2; x + 1 - y" `shouldBe` Just m2
+  it "parseComb x = 5 + y" $ do
+    parse "x = 5 + y" `shouldBe` Just a3
 
---   it "parseMod m3 x = 5; 3 * 2 / 4 - 6; y = 3; 3 - 4 + 6" $ do
---     parse "x = 5; 3 * 2 / 4 - 6; y = 3; 3 - 4 + 6" `shouldBe` Just m3
+  it "parseComb x = 5 + f y" $ do
+    parse "x = 5 + f y" `shouldBe` Just a4
 
---   it "parseMod m4 x = 5 + 2; 3 * 2 / 4 - 6; y = 3 * 2; 3 - 4 + 6" $ do
---     parse "x = 5 + 2; 3 * 2 / 4 - 6; y = 3 * 2; 3 - 4 + 6" `shouldBe` Just m4
+  it "parseComb f x = (x + x) * x" $ do
+    parse "f x = (x + x) * x" `shouldBe` Just f1
 
---   it "parseMod m5 x = 5; x * 2" $ do
---     parse "x = 5; x * 2" `shouldBe` Just m5
+  it "parseComb f x y = (x + y) * x / y" $ do
+    parse "f x y = (x + y) * x / y" `shouldBe` Just f2
 
---   it "parseMod m6 x = 5 + 3; x = x * 2; x / 5" $ do
---     parse "x = 5 + 3; x = x * 2; x / 5" `shouldBe` Just m6
+  it "parseComb f x y = g x + z\\n where\\n  g a = a / 2\\n  z = y * 2" $ do
+    parse "f x y = g x + z\n where\n  g a = a / 2\n  z = y * 2" `shouldBe` Just f3
 
---   it "parseMod m7 f(z) { z * 2 }; x = f(4) * 2" $ do
---     parse "f(z) { z * 2 }; x = f(4) * 2" `shouldBe` Just m7
+testParseProg :: Spec
+testParseProg = describe "Typec.Parser" $ do
+  let parse = foldResult (const Nothing) Just . parseString (parseProg <* eof) mempty
+
+  it "parseProg x = 5\\nmain = x * 2" $ do
+    parse "x = 5\nmain = x * 2" `shouldBe` Just p1
+
+  it "parseProg x = 5\\n\\n\\nmain = x * 2" $ do
+    parse "x = 5\n\n\nmain = x * 2" `shouldBe` Just p1
+
+  it "parseProg x = 5\\ny = x * 2\\nmain = x + 1 - y" $ do
+    parse "x = 5\ny = x * 2\nmain = x + 1 - y" `shouldBe` Just p2
+
+  it "parseProg y = 5\\nf x = y * 2 - x\\nmain = f 3 - 2 * y" $ do
+    parse "y = 5\nf x = y * 2 - x\nmain = f 3 - 2 * y" `shouldBe` Just p3
+
+  it "parseProg z = 5\\n\\nf x = y * 2 - x\\n\\nu = 7 + f y\\n\\ng x y = f y * h x * 3 / z - 2 * w\\n where\\n  h x = f x / 3\\n  w = u + 2\\n\\nmain = f 3 - 2 * y + g x y - z" $ do
+    parse "z = 5\n\nf x = y * 2 - x\n\nu = 7 + f y\n\ng x y = f y * h x * 3 / z - 2 * w\n where\n  h x = f x / 3\n  w = u + 2\n\nmain = f 3 - 2 * y + g x y - z" `shouldBe` Just p4

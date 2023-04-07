@@ -2,56 +2,88 @@
 
 module AST where
 
-import Control.Applicative (liftA2, liftA3)
-import Data.List (intercalate)
+import Prelude hiding (exp)
+
+import Control.Applicative (liftA2)
+import Data.List.NonEmpty (fromList)
 
 import Test.QuickCheck
   (
-    Arbitrary (arbitrary), Args (maxSize), elements, listOf, oneof, quickCheckWith, sized, stdArgs, vectorOf, within
+    Arbitrary (arbitrary), Args (maxSize)
+  , elements, listOf, oneof, quickCheck, quickCheckWith, sized, stdArgs, vectorOf, within
   )
 import Text.Trifecta (eof, foldResult, parseString)
 
-import Typec.AST (Expr ((:+), (:-), (:*), (:/), (:=), Exe, Val, Var, Fun))
-import Typec.Parser (parseMod)
+import Typec.AST (Comb ((:=), Fun), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var), Id (Id), Prog (Prog))
+import Typec.Parser (parseComb, parseExp, parseId, parseProg)
 
-instance Arbitrary Expr where
-  arbitrary = sized expr
+instance Arbitrary Id where
+  arbitrary = Id <$> liftA2 (:) start nexts
    where
-    expr 0 = oneof
+    start = elements $ ['a'..'z'] <> ['A'..'Z'] <> ['_']
+    nexts = listOf $ elements $ ['a'..'z'] <> ['A'..'Z'] <> ['0'..'9'] <> ['_']
+
+instance Arbitrary Exp where
+  arbitrary = sized exp
+   where
+    exp 0 = oneof
+              [
+                var
+              , val
+              ]
+    exp n = oneof
+              [
+                liftA2 (:+) (sex n) (sex n)
+              , liftA2 (:-) (sex n) (sex n)
+              , liftA2 (:*) (sex n) (sex n)
+              , liftA2 (:/) (sex n) (sex n)
+              , exe n
+              , var
+              , val
+              ]
+    exe n = liftA2 Exe arbitrary (fromList <$> vectorOf n (sex n))
+    var = Var <$> arbitrary
+    val = Val <$> arbitrary
+
+    sex n = exp $ n `div` 2
+
+instance Arbitrary Comb where
+  arbitrary = sized comb
+   where
+    comb n = oneof
                [
-                 val
-               , var
-               ]
-    expr n = oneof
-               [
-                 val
-               , var
-               , ass n
-               , bin n
-               , exe n
+                 ass
                , fun n
                ]
-    var = Var <$> liftA2 (:) start nexts
-    val = Val <$> arbitrary
-    bin n = oneof
-              [
-                liftA2 (:+) (sbin n) (sbin n)
-              , liftA2 (:-) (sbin n) (sbin n)
-              , liftA2 (:*) (sbin n) (sbin n)
-              , liftA2 (:/) (sbin n) (sbin n)
-              ]
-    ass n = liftA2 (:=) var (bin n)
-    exe n = liftA2 Exe var (vectorOf n $ sbin n)
-    fun n = liftA3 Fun var (listOf var) (vectorOf n $ sbin n)
+    ass = liftA2 (:=) arbitrary arbitrary
+    fun n = let scomb = if n <= 1
+                        then pure []
+                        else vectorOf n (comb $ n `div` 2)
+             in Fun <$> arbitrary <*> (fromList <$> vectorOf (max 1 n) arbitrary) <*> arbitrary <*> scomb
 
-    sbin 0 = oneof [val, var, exe 1] -- to chooseInt
-    sbin n = bin (n `div` 2)
+instance Arbitrary Prog where
+  arbitrary = sized (\n -> Prog . fromList <$> vectorOf (max 1 n) arbitrary)
 
-    start = elements ['a'..'z']
-    nexts = listOf $ elements $ ['a'..'z'] <> ['A'..'Z'] <> ['0'..'9'] <> ['_', '\'']
-
-qtestExpr :: IO ()
-qtestExpr = quickCheckWith (stdArgs { maxSize = 6 }) (within 8000 readShow)
+qtestId :: IO ()
+qtestId = quickCheck readShow
  where
-  readShow es = parse (intercalate ";" . fmap show $ es) == Just es
-  parse = foldResult (const Nothing) Just . parseString (parseMod <* eof) mempty
+  readShow i = parse (show i) == Just i
+  parse = foldResult (const Nothing) Just . parseString (parseId <* eof) mempty
+
+qtestExp :: IO ()
+qtestExp = quickCheckWith (stdArgs { maxSize = 4 }) (within 4000 readShow)
+ where
+  readShow e = parse (show e) == Just e
+  parse = foldResult (const Nothing) Just . parseString (parseExp <* eof) mempty
+
+qtestComb :: IO ()
+qtestComb = quickCheckWith (stdArgs { maxSize = 3 }) (within 3000 readShow)
+ where
+  readShow c = parse (show c) == Just c
+  parse = foldResult (const Nothing) Just . parseString (parseComb <* eof) mempty
+
+qtestProg :: IO ()
+qtestProg = quickCheckWith (stdArgs { maxSize = 4 }) (within 4000 readShow)
+ where
+  readShow c = parse (show c) == Just c
+  parse = foldResult (const Nothing) Just . parseString (parseProg <* eof) mempty

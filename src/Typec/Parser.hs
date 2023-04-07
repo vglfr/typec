@@ -1,38 +1,38 @@
 module Typec.Parser where
 
 import Control.Applicative ((<|>), some)
-import Data.List.NonEmpty (fromList)
-import Data.Maybe (fromMaybe)
+import Data.List.NonEmpty (fromList, toList)
 
 import Data.HashSet (singleton)
 import Text.Trifecta
   (
-    CharParsing, IdentifierStyle (IdentifierStyle), Parser, Result
-  , alphaNum, chainl1, char, ident, integerOrDouble, letter, optional, parens, parseString, reserve, symbol, token, try, semiSep1, eof
+    CharParsing, IdentifierStyle (IdentifierStyle), Parser, Result, TokenParsing
+  , alphaNum, chainl1, char, eof, ident, integerOrDouble, letter, newline, optional
+  , parens, parseString, reserve, runUnlined, sepEndByNonEmpty, spaces, symbol, try
   )
 
-import Typec.AST (Prog (Prog), Comb ((:=), Fun), Id (Id), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var))
+import Typec.AST (Comb ((:=), Fun), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var), Id (Id), Prog (Prog))
 
 idStyle :: CharParsing a => IdentifierStyle a
 idStyle = IdentifierStyle "id" (letter <|> char '_') (alphaNum <|> char '_') (singleton "where") minBound maxBound
 
-parseId :: Parser Id
-parseId = Id <$> ident idStyle
+parseId :: (Monad m, TokenParsing m) => m Id
+parseId = Id <$> runUnlined (ident idStyle)
 
-parseVar :: Parser Exp
+parseVar :: (Monad m, TokenParsing m) => m Exp
 parseVar = Var <$> parseId
 
-parseVal :: Parser Exp
-parseVal = Val . either fromInteger id <$> integerOrDouble
+parseVal :: (Monad m, TokenParsing m) => m Exp
+parseVal = Val . either fromInteger id <$> runUnlined integerOrDouble
 
-parseExe :: Parser Exp
+parseExe :: (Monad m, TokenParsing m) => m Exp
 parseExe = do
   i <- parseId
   as <- some $ try parseVal <|> try parseVar <|> parens (try parseExe <|> parseExp)
   pure $ Exe i (fromList as)
 
-parseExp :: Parser Exp
-parseExp = expr
+parseExp :: (Monad m, TokenParsing m) => m Exp
+parseExp = runUnlined expr
  where
   expr = chainl1 term addop
   term = chainl1 fact mulop
@@ -45,7 +45,7 @@ parseExp = expr
 parseAss :: Parser Comb
 parseAss = do
   v <- parseId 
-  _ <- token $ char '=' 
+  _ <- runUnlined $ symbol "="
   e <- parseExp
   pure $ v := e
 
@@ -53,16 +53,17 @@ parseFun :: Parser Comb
 parseFun = do
   i <- parseId
   ps <- some parseId
-  _ <- token $ char '='
+  _ <- runUnlined $ symbol "="
   e <- parseExp
-  cs <- optional $ reserve idStyle "where" *> some parseComb
-  pure $ Fun i (fromList ps) e (fromMaybe [] cs)
+  cs <- optional . try $ newline *> some (char ' ') *> runUnlined (reserve idStyle "where")
+                      *> newline *> sepEndByNonEmpty (some (char ' ') *> parseComb) newline
+  pure $ Fun i (fromList ps) e (maybe [] toList cs)
 
 parseComb :: Parser Comb
 parseComb = try parseFun <|> parseAss
 
 parseProg :: Parser Prog
-parseProg = Prog . fromList <$> (semiSep1 parseComb <* eof)
+parseProg = Prog <$> sepEndByNonEmpty parseComb spaces <* eof
 
 parse :: String -> Result Prog
 parse = parseString parseProg mempty

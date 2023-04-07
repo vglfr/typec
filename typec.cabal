@@ -15,8 +15,6 @@ common common
     -Wredundant-constraints
   build-depends:
       base == 4.17.*
---    , filepath == 1.4.*
---    , process == 1.6.*
     , trifecta == 2.1.*
     , unordered-containers == 0.2.*
 
@@ -25,8 +23,6 @@ library
     common
   exposed-modules:
       Typec.AST
---    , Typec.Codegen
---    , Typec.Compiler
     , Typec.Example
     , Typec.Parser
   hs-source-dirs:
@@ -64,8 +60,7 @@ test-suite typec
   main-is:
     Main.hs
   other-modules:
---      AST
---    , Compiler
+      AST
       Parser
   type:
     exitcode-stdio-1.0

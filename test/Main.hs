@@ -2,8 +2,12 @@ module Main where
 
 import Test.Hspec (hspec)
 
--- import AST (qtestExpr)
-import Parser (testParseAss, testParseExe, testParseExp, testParseFun, testParseId, testParseVal, testParseVar)
+import AST (qtestComb, qtestExp, qtestId, qtestProg)
+import Parser
+  (
+    testParseAss, testParseComb, testParseExe, testParseExp, testParseFun
+  , testParseId, testParseProg, testParseVal, testParseVar
+  )
 
 main :: IO ()
 main = do
@@ -15,5 +19,9 @@ main = do
     testParseExp
     testParseAss
     testParseFun
-    -- testParseMod
-  -- qtestExpr
+    testParseComb
+    testParseProg
+  qtestId
+  qtestExp
+  qtestComb
+  qtestProg

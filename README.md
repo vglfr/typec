@@ -1,15 +1,15 @@
 ## typec - Language with Types
 
 + migrate from numc
-
-- update semantics
++ update semantics
 
 - tree-walk interpreter
-- native codegen
-- functions
+
+- template haskell
 - comparisons
 - conditionals
 - boolean types
+- native codegen
 - fX, iX, uX types
 - base parser (integrate num)
 - optimizer (integrate lambdac)

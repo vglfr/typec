@@ -24,6 +24,7 @@ library
   exposed-modules:
       Typec.AST
     , Typec.Example
+    , Typec.Interpreter
     , Typec.Parser
   hs-source-dirs:
     src

@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -Wno-missing-methods #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 
 module Typec.AST where
 

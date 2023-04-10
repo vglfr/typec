@@ -3,6 +3,7 @@
 module Typec.Example where
 
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.HashMap.Strict (empty, fromList)
 import Typec.AST (Prog (Prog), Comb ((:=), Fun), Id, Exp ((:+), (:-), (:*), (:/), Exe))
 
 {- x -}
@@ -111,11 +112,11 @@ a4 = "x" := 5 :+ Exe "f" ("y" :| [])
 
 {- f x = (x + x) * x -}
 f1 :: Comb
-f1 = Fun "f" ("x" :| []) (("x" :+ "x") :* "x") []
+f1 = Fun "f" ("x" :| []) (("x" :+ "x") :* "x") empty
 
 {- f x y = (x + y) * x / y -}
 f2 :: Comb
-f2 = Fun "f" ("x" :| ["y"]) (("x" :+ "y") :* "x" :/ "y") []
+f2 = Fun "f" ("x" :| ["y"]) (("x" :+ "y") :* "x" :/ "y") empty
 
 {-
 f x y = g x + z
@@ -128,14 +129,21 @@ f3 = Fun
        "f"
        ("x" :| ["y"])
        (Exe "g" ("x" :| []) :+ "z")
-       [Fun "g" ("a" :| []) ("a" :/ 2) [], "z" := "y" :* 2]
+       (fromList [
+                   ("g", Fun "g" ("a" :| []) ("a" :/ 2) empty)
+                 , ("z", "z" := "y" :* 2)
+                 ])
 
 {-
 x = 5
 main = x * 2
 -}
 p1 :: Prog
-p1 = Prog $ ("x" := 5) :| ["main" := "x" :* 2]
+p1 = Prog $ fromList
+  [
+    ("x", "x" := 5)
+  , ("main", "main" := "x" :* 2)
+  ]
 
 {-
 x = 5
@@ -143,10 +151,11 @@ y = x * 2
 main = x + 1 - y
 -}
 p2 :: Prog
-p2 = Prog $ ("x" := 5) :|
+p2 = Prog $ fromList
   [
-    "y" := "x" :* 2
-  , "main" := "x" :+ 1 :- "y"
+    ("x", "x" := 5)
+  , ("y", "y" := "x" :* 2)
+  , ("main", "main" := "x" :+ 1 :- "y")
   ]
 
 {-
@@ -155,58 +164,105 @@ f x = y * 2 - x
 main = f 3 - 2 * y
 -}
 p3 :: Prog
-p3 = Prog $ ("y" := 5) :|
+p3 = Prog $ fromList
   [
-    Fun "f" ("x" :| []) ("y" :* 2 :- "x") []
-  , "main" := Exe "f" (3 :| []) :- 2 :* "y"
+    ("y", "y" := 5)
+  , ("f", Fun "f" ("x" :| []) ("y" :* 2 :- "x") empty)
+  , ("main", "main" := Exe "f" (3 :| []) :- 2 :* "y")
   ]
 
 {-
 z = 5
 
-f x = y * 2 - x
+f x = z * 2 - x
 
-u = 7 + f y
+u = 7 + f z
 
 g x y = f y * h x * 3 / z - 2 * w
  where
   h x = f x / 3
   w = u + 2
 
-main = f 3 - 2 * y + g x y - z
+main = f 3 - 2 * z + g u z - z
 -}
 p4 :: Prog
-p4 = Prog $ ("z" := 5) :|
+p4 = Prog $ fromList
   [
-    Fun "f" ("x" :| []) ("y" :* 2 :- "x") []
-  , "u" := 7 :+ Exe "f" ("y" :| [])
-  , Fun
+    ("z", "z" := 5)
+  , ("f", Fun "f" ("x" :| []) ("z" :* 2 :- "x") empty)
+  , ("u", "u" := 7 :+ Exe "f" ("z" :| []))
+  , (
       "g"
-      ("x" :| ["y"])
-      (Exe "f" ("y" :| []) :* Exe "h" ("x" :| []) :* 3 :/ "z" :- 2 :* "w")
-      [
-        Fun "h" ("x" :| []) (Exe "f" ("x" :| []) :/ 3) []
-      , "w" := "u" :+ 2
-      ]
-  , "main" := Exe "f" (3 :| []) :- 2 :* "y" :+ Exe "g" ("x" :| ["y"]) :- "z"
+    , Fun
+        "g"
+        ("x" :| ["y"])
+        (Exe "f" ("y" :| []) :* Exe "h" ("x" :| []) :* 3 :/ "z" :- 2 :* "w")
+        (fromList
+           [
+             ("h", Fun "h" ("x" :| []) (Exe "f" ("x" :| []) :/ 3) empty)
+           , ("w", "w" := "u" :+ 2)
+           ]
+        )
+    )
+  , ("main", "main" := Exe "f" (3 :| []) :- 2 :* "z" :+ Exe "g" ("u" :| ["z"]) :- "z")
   ]
 
 {-
 main = 3 * 2
 -}
 p5 :: Prog
-p5 = Prog $ ("main" := 3 :* 2) :| []
+p5 = Prog $ fromList
+  [
+    ("main", "main" := 3 :* 2)
+  ]
 
 {-
 main = (3 + 2) / ((3 - 2) * 4 + 6)
 -}
 p6 :: Prog
-p6 = Prog $ ("main" := (3 :+ 2) :/ ((3 :- 2) :* 4 :+ 6)) :| []
+p6 = Prog $ fromList
+  [
+    ("main", "main" := (3 :+ 2) :/ ((3 :- 2) :* 4 :+ 6))
+  ]
 
 {-
 f x = 2 - x
 main = f 3 - 2
 -}
 p7 :: Prog
-p7 = Prog $ (Fun "f" ("x" :| []) (2 :- "x") []) :| ["main" := Exe "f" (3 :| []) :- 2]
+p7 = Prog $ fromList
+  [
+    ("f", Fun "f" ("x" :| []) (2 :- "x") empty)
+  , ("main", "main" := Exe "f" (3 :| []) :- 2)
+  ]
+
+{-
+x = 5
+y = 7 + 5 * x
+
+f u w = g u * 3 / y - 2 * x + g w
+ where
+  g a = 5 * a / 3
+
+main = f 3 y - 2 * x + f y 0 - y
+-}
+p8 :: Prog
+p8 = Prog $ fromList
+  [
+    ("x", "x" := 5)
+  , ("y", "y" := 7 :+ 5 :* "x")
+  , (
+      "f"
+    , Fun
+        "f"
+        ("u" :| ["w"])
+        (Exe "g" ("u" :| []) :* 3 :/ "y" :- 2 :* "x" :+ Exe "g" ("w" :| []))
+        (fromList
+           [
+             ("g", Fun "g" ("a" :| []) (5 :* "a" :/ 3) empty)
+           ]
+        )
+    )
+  , ("main", "main" := Exe "f" (3 :| ["y"]) :- 2 :* "x" :+ Exe "f" ("y" :| [0]) :- "y")
+  ]
 

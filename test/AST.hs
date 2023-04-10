@@ -7,6 +7,7 @@ import Prelude hiding (exp)
 import Control.Applicative (liftA2)
 import Data.List.NonEmpty (fromList)
 
+import Data.HashMap.Strict (empty)
 import Test.QuickCheck
   (
     Arbitrary (arbitrary), Args (maxSize)
@@ -15,7 +16,7 @@ import Test.QuickCheck
 import Text.Trifecta (eof, foldResult, parseString)
 
 import Typec.AST (Comb ((:=), Fun), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var), Id (Id), Prog (Prog))
-import Typec.Parser (parseComb, parseExp, parseId, parseProg)
+import Typec.Parser (fromList, parseComb, parseExp, parseId, parseProg)
 
 instance Arbitrary Id where
   arbitrary = Id <$> liftA2 (:) start nexts
@@ -41,7 +42,7 @@ instance Arbitrary Exp where
               , var
               , val
               ]
-    exe n = liftA2 Exe arbitrary (fromList <$> vectorOf n (sex n))
+    exe n = liftA2 Exe arbitrary (Data.List.NonEmpty.fromList <$> vectorOf n (sex n))
     var = Var <$> arbitrary
     val = Val <$> arbitrary
 
@@ -57,12 +58,12 @@ instance Arbitrary Comb where
                ]
     ass = liftA2 (:=) arbitrary arbitrary
     fun n = let scomb = if n <= 1
-                        then pure []
-                        else vectorOf n (comb $ n `div` 2)
-             in Fun <$> arbitrary <*> (fromList <$> vectorOf (max 1 n) arbitrary) <*> arbitrary <*> scomb
+                        then pure empty
+                        else Typec.Parser.fromList <$> vectorOf n (comb $ n `div` 2)
+             in Fun <$> arbitrary <*> (Data.List.NonEmpty.fromList <$> vectorOf (max 1 n) arbitrary) <*> arbitrary <*> scomb
 
 instance Arbitrary Prog where
-  arbitrary = sized (\n -> Prog . fromList <$> vectorOf (max 1 n) arbitrary)
+  arbitrary = sized (\n -> Prog . Typec.Parser.fromList <$> vectorOf (max 1 n) arbitrary)
 
 qtestId :: IO ()
 qtestId = quickCheck readShow

@@ -10,11 +10,14 @@ import Data.List.NonEmpty (NonEmpty, intersperse)
 import Data.String (IsString, fromString)
 import GHC.Show (showSpace)
 
-newtype Prog = Prog (NonEmpty Comb) deriving Eq
+import Data.HashMap.Strict (HashMap, elems)
+import Data.Hashable (Hashable, hash, hashWithSalt)
+
+newtype Prog = Prog (HashMap Id Comb) deriving Eq
 
 data Comb
   = Id := Exp
-  | Fun Id (NonEmpty Id) Exp [Comb]
+  | Fun Id (NonEmpty Id) Exp (HashMap Id Comb)
   deriving Eq
 
 newtype Id = Id String deriving Eq
@@ -36,14 +39,14 @@ infixl 6 :/
 infixr 0 :=
 
 instance Show Prog where
-  show (Prog cs) = Typec.AST.intercalate "\n\n" . fmap show $ cs
+  show (Prog c) = intercalate "\n\n" . fmap show . elems $ c
 
 instance Show Comb where
   show (i := e) = show i <> " = " <> show e
-  show (Fun i as e cs) = show i <> " " <> unwords (fmap show as) <> " = " <> show e <> showCombs cs 
-   where showCombs ss = if null ss
-                        then ""
-                        else "\n where\n  " <> Data.List.intercalate "\n  " (fmap show ss)
+  show (Fun i as e c) = show i <> " " <> unwords (fmap show as) <> " = " <> show e <> showCombs
+   where showCombs = if null c
+                     then ""
+                     else "\n where\n  " <> intercalate "\n  " (fmap show . elems $ c)
 
 instance Show Id where
   show (Id s) = s
@@ -79,8 +82,12 @@ instance IsString Exp where
 instance IsString Id where
   fromString = Id
 
-intercalate :: [a] -> NonEmpty [a] -> [a]
-intercalate x = concat . intersperse x
+instance Hashable Id where
+  hash (Id i) = hash i
+  hashWithSalt n (Id i) = hashWithSalt n i
+
+-- intercalate :: [a] -> NonEmpty [a] -> [a]
+-- intercalate x = 
 
 unwords :: NonEmpty String -> String
-unwords = Typec.AST.intercalate " "
+unwords = concat . intersperse " "

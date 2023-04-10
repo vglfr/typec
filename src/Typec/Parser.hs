@@ -1,8 +1,9 @@
 module Typec.Parser where
 
 import Control.Applicative ((<|>), some)
-import Data.List.NonEmpty (fromList, toList)
+import Data.List.NonEmpty (NonEmpty, fromList, toList)
 
+import Data.HashMap.Strict (HashMap, empty, fromList)
 import Data.HashSet (singleton)
 import Text.Trifecta
   (
@@ -29,7 +30,7 @@ parseExe :: (Monad m, TokenParsing m) => m Exp
 parseExe = do
   i <- parseId
   as <- some $ try parseVal <|> try parseVar <|> parens (try parseExe <|> parseExp)
-  pure $ Exe i (fromList as)
+  pure $ Exe i (Data.List.NonEmpty.fromList as)
 
 parseExp :: (Monad m, TokenParsing m) => m Exp
 parseExp = runUnlined expr
@@ -57,13 +58,27 @@ parseFun = do
   e <- parseExp
   cs <- optional . try $ newline *> some (char ' ') *> runUnlined (reserve idStyle "where")
                       *> newline *> sepEndByNonEmpty (some (char ' ') *> parseComb) newline
-  pure $ Fun i (fromList ps) e (maybe [] toList cs)
+  pure $ Fun i (Data.List.NonEmpty.fromList ps) e (maybe empty fromNonEmpty cs)
 
 parseComb :: Parser Comb
 parseComb = try parseFun <|> parseAss
 
 parseProg :: Parser Prog
-parseProg = Prog <$> sepEndByNonEmpty parseComb spaces <* eof
+parseProg = Prog . fromNonEmpty <$> sepEndByNonEmpty parseComb spaces <* eof
 
 parse :: String -> Result Prog
 parse = parseString parseProg mempty
+
+fromNonEmpty :: NonEmpty Comb -> HashMap Id Comb
+fromNonEmpty = Data.HashMap.Strict.fromList . fmap keyval . toList
+ where
+  keyval c = case c of
+               Fun f _ _ _ -> (f,c)
+               f := _ -> (f,c)
+
+fromList :: [Comb] -> HashMap Id Comb
+fromList = Data.HashMap.Strict.fromList . fmap keyval
+ where
+  keyval c = case c of
+               Fun f _ _ _ -> (f,c)
+               f := _ -> (f,c)

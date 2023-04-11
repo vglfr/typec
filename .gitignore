@@ -1,2 +1,6 @@
 .direnv/
 dist-newstyle/
+
+asm/*
+!asm/*.c
+!asm/*.s

@@ -2,15 +2,16 @@
 
 + migrate from numc
 + update semantics
++ tree-walk interpreter
 
-- tree-walk interpreter
+- native codegen
 
-- template haskell
 - comparisons
 - conditionals
 - boolean types
-- native codegen
 - fX, iX, uX types
+- template haskell
+- lazy evaluation
 - base parser (integrate num)
 - optimizer (integrate lambdac)
 - design inquiry (what market needs)

@@ -16,6 +16,7 @@ common common
   build-depends:
       base == 4.17.*
     , hashable == 1.4.*
+    , process == 1.6.*
     , trifecta == 2.1.*
     , unordered-containers == 0.2.*
   default-Language:
@@ -26,6 +27,7 @@ library
     common
   exposed-modules:
       Typec.AST
+    , Typec.Compiler
     , Typec.Example
     , Typec.Interpreter
     , Typec.Parser

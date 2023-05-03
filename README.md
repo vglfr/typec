@@ -4,7 +4,7 @@
 + update semantics
 + tree-walk interpreter
 
-- native codegen
+- native asmgen
 
 - comparisons
 - conditionals

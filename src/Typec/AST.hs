@@ -86,8 +86,5 @@ instance Hashable Id where
   hash (Id i) = hash i
   hashWithSalt n (Id i) = hashWithSalt n i
 
--- intercalate :: [a] -> NonEmpty [a] -> [a]
--- intercalate x = 
-
 unwords :: NonEmpty String -> String
 unwords = concat . intersperse " "

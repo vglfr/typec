@@ -23,20 +23,18 @@ data Comb
 newtype Id = Id String deriving Eq
 
 data Exp
-  = Exp :+ Exp
-  | Exp :- Exp
-  | Exp :* Exp
-  | Exp :/ Exp
+  = Bin Op Exp Exp
   | Exe Id (NonEmpty Exp)
   | Var Id
   | Val Double
   deriving Eq
 
-infixl 5 :+
-infixl 5 :-
-infixl 6 :*
-infixl 6 :/
-infixr 0 :=
+data Op
+  = Add
+  | Sub
+  | Mul
+  | Div
+  deriving Eq
 
 instance Show Prog where
   show (Prog c) = intercalate "\n\n" . fmap show . elems $ c
@@ -53,10 +51,8 @@ instance Show Id where
 
 instance Show Exp where
   showsPrec n e = case e of
-                    x :+ y -> showParen (n > 5) $ showsPrec 5 x . showString " + " . showsPrec 6 y
-                    x :- y -> showParen (n > 5) $ showsPrec 5 x . showString " - " . showsPrec 6 y
-                    x :* y -> showParen (n > 6) $ showsPrec 6 x . showString " * " . showsPrec 7 y
-                    x :/ y -> showParen (n > 6) $ showsPrec 6 x . showString " / " . showsPrec 7 y
+                    Bin o x y -> let m = prec o
+                                  in showParen (n > m) $ showsPrec m x . shows o . showsPrec (m+1) y
                     Exe f es -> shows f . showSpace . showArgs es
                     Var i -> shows i
                     Val v -> let i = round v
@@ -69,6 +65,18 @@ instance Show Exp where
                   Val _ -> shows a
                   Var _ -> shows a
                   _ -> showParen True (shows a)
+    prec o = case o of
+               Add -> 5
+               Sub -> 5
+               Mul -> 6
+               Div -> 6
+
+instance Show Op where
+  show o = case o of
+             Add -> " + "
+             Sub -> " - "
+             Mul -> " * "
+             Div -> " / "
 
 instance Num Exp where
   fromInteger = Val . fromInteger

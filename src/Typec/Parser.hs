@@ -12,7 +12,14 @@ import Text.Trifecta
   , parens, parseString, reserve, runUnlined, sepEndByNonEmpty, spaces, symbol, try
   )
 
-import Typec.AST (Comb ((:=), Fun), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var), Id (Id), Prog (Prog))
+import Typec.AST
+  (
+    Comb ((:=), Fun)
+  , Exp (Bin, Exe, Val, Var)
+  , Id (Id)
+  , Op (Add, Div, Mul, Sub)
+  , Prog (Prog)
+  )
 
 idStyle :: CharParsing a => IdentifierStyle a
 idStyle = IdentifierStyle "id" (letter <|> char '_') (alphaNum <|> char '_') (singleton "where") minBound maxBound
@@ -38,10 +45,10 @@ parseExp = runUnlined expr
   expr = chainl1 term addop
   term = chainl1 fact mulop
   fact = parens expr <|> try parseExe <|> try parseVal <|> parseVar
-  addop = (:+) <$ symbol "+"
-      <|> (:-) <$ symbol "-"
-  mulop = (:*) <$ symbol "*"
-      <|> (:/) <$ symbol "/"
+  addop = Bin Add <$ symbol "+"
+      <|> Bin Sub <$ symbol "-"
+  mulop = Bin Mul <$ symbol "*"
+      <|> Bin Div <$ symbol "/"
 
 parseAss :: Parser Comb
 parseAss = do

@@ -4,7 +4,7 @@ import Data.List (elemIndex)
 import Data.Maybe (fromJust)
 
 -- import System.Process (readProcess)
-import Typec.AST (Exp ((:+), (:-), (:*), (:/), Val))
+import Typec.AST (Exp (Bin, Val), Op)
 
 {-
 declare :: String
@@ -84,20 +84,22 @@ run s = do
 -}
 
 data Ins
-  = Val :+: Val
-  | Val :-: Val
-  | Val :*: Val
-  | Val :/: Val
+  = Two Op Val Val
+  -- = Val :+: Val
+  -- | Val :-: Val
+  -- | Val :*: Val
+  -- | Val :/: Val
 
 data Val
   = Imm Double
   | Ref Int
 
 instance Show Ins where
-  show (a :+: b) = show a <> " + " <> show b
-  show (a :-: b) = show a <> " - " <> show b
-  show (a :*: b) = show a <> " * " <> show b
-  show (a :/: b) = show a <> " / " <> show b
+  show (Two o a b) = show a <> show o <> show b
+  -- show (a :+: b) = show a <> " + " <> show b
+  -- show (a :-: b) = show a <> " - " <> show b
+  -- show (a :*: b) = show a <> " * " <> show b
+  -- show (a :/: b) = show a <> " / " <> show b
 
 instance Show Val where
   show (Imm x) = show x
@@ -108,31 +110,34 @@ spool t = let es = flat t
            in fmap (ref es) es
  where
   flat e = case e of
-             a :+ b -> flat a <> flat b <> [e]
-             a :- b -> flat a <> flat b <> [e]
-             a :* b -> flat a <> flat b <> [e]
-             a :/ b -> flat a <> flat b <> [e]
+             Bin _ a b -> flat a <> flat b <> [e]
+             -- a :+ b -> flat a <> flat b <> [e]
+             -- a :- b -> flat a <> flat b <> [e]
+             -- a :* b -> flat a <> flat b <> [e]
+             -- a :/ b -> flat a <> flat b <> [e]
              _ -> mempty
   ref es e = case e of
-               a :+ b -> val a es e :+: val b es e
-               a :- b -> val a es e :-: val b es e
-               a :* b -> val a es e :*: val b es e
-               a :/ b -> val a es e :/: val b es e
+               Bin o a b -> Two o (val a es e) (val b es e)
+               -- a :+ b -> val a es e :+: val b es e
+               -- a :- b -> val a es e :-: val b es e
+               -- a :* b -> val a es e :*: val b es e
+               -- a :/ b -> val a es e :/: val b es e
                _ -> undefined
   val e es e' = case e of
                   Val x -> Imm x
                   _ -> Ref $ index e es - index e' es 
   index e es = fromJust $ elemIndex e es
 
-compile :: [Ins] -> String
-compile = undefined
- where
-  compile' :: Ins -> String
-  compile' i = case i of
-                 a :+: b -> undefined
-                 a :-: b -> undefined
-                 a :*: b -> undefined
-                 a :/: b -> undefined
-  imm i = case i of
-            Imm x -> undefined
-            Ref x -> undefined
+-- compile :: [Ins] -> String
+-- compile = unlines . fmap compile'
+--  where
+--   compile' :: Ins -> String
+--   compile' i = case i of
+--                  _a :+: _b -> undefined
+--                  _a :-: _b -> undefined
+--                  _a :*: _b -> undefined
+--                  _a :/: _b -> undefined
+
+  -- val i = case i of
+  --           Imm _x -> undefined
+  --           Ref _x -> undefined

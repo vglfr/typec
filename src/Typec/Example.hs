@@ -4,7 +4,14 @@ module Typec.Example where
 
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.HashMap.Strict (empty, fromList)
-import Typec.AST (Prog (Prog), Comb ((:=), Fun), Id, Exp ((:+), (:-), (:*), (:/), Exe))
+import Typec.AST
+  (
+    Comb ((:=), Fun)
+  , Exp (Bin, Exe)
+  , Id
+  , Op (Add, Div, Mul, Sub)
+  , Prog (Prog)
+  )
 
 {- x -}
 i1 :: Id
@@ -36,39 +43,39 @@ w2 = "yY32_"
 
 {- 1 + 2 -}
 b1 :: Exp
-b1 = 1 :+ 2
+b1 = Bin Add 1 2
 
 {- 1 - 2 -}
 b2 :: Exp
-b2 = 1 :- 2
+b2 = Bin Sub 1 2
 
 {- 1 * 2 -}
 b3 :: Exp
-b3 = 1 :* 2
+b3 = Bin Mul 1 2
 
 {- 1 / 2 -}
 b4 :: Exp
-b4 = 1 :/ 2
+b4 = Bin Div 1 2
 
 {- -1 + 2 -}
 b5 :: Exp
-b5 = -1 :+ 2
+b5 = Bin Add (-1) 2
 
 {- 1 - -2 -}
 b6 :: Exp
-b6 = 1 :- -2
+b6 = Bin Sub 1 (-2)
 
 {- 5 + 1 - 3 + 6 * 2 / 4 -}
 b7 :: Exp
-b7 = 5 :+ 1 :- 3 :+ 6 :* 2 :/ 4
+b7 = Bin Add (Bin Sub (Bin Add 5 1) 3) (Bin Div (Bin Mul 6 2) 4)
 
 {- 5 + f x 3 - 3 -}
 b8 :: Exp
-b8 = 5 :+ Exe "f" ("x" :| [3]) :- 3
+b8 = Bin Sub (Bin Add 5 (Exe "f" ("x" :| [3]))) 3
 
 {- 5 + f x (3 - y) - 3 -}
 b9 :: Exp
-b9 = 5 :+ Exe "f" ("x" :| [3 - "y"]) :- 3
+b9 = Bin Sub (Bin Add 5 (Exe "f" ("x" :| [Bin Sub 3 "y"]))) 3
 
 {- f 5 -}
 e1 :: Exp
@@ -80,11 +87,11 @@ e2 = Exe "f" (5 :| [3])
 
 {- f (5 + 3) -}
 e3 :: Exp
-e3 = Exe "f" ((5 :+ 3) :| [])
+e3 = Exe "f" (Bin Add 5 3 :| [])
 
 {- f 3 (5 + y) -}
 e4 :: Exp
-e4 = Exe "f" (3 :| [5 :+ "y"])
+e4 = Exe "f" (3 :| [Bin Add 5 "y"])
 
 {- f x y -}
 e5 :: Exp
@@ -92,7 +99,7 @@ e5 = Exe "f" ("x" :| ["y"])
 
 {- f 3 (5 + y) x -}
 e6 :: Exp
-e6 = Exe "f" (3 :| [5 :+ "y", "x"])
+e6 = Exe "f" (3 :| [Bin Add 5 "y", "x"])
 
 {- x = 5 -}
 a1 :: Comb
@@ -100,23 +107,23 @@ a1 = "x" := 5
 
 {- x = 5 + 1 / 4 - 3 * 2 -}
 a2 :: Comb
-a2 = "x" := 5 :+ 1 :/ 4 :- 3 :* 2
+a2 = "x" := Bin Sub (Bin Add 5 (Bin Div 1 4)) (Bin Mul 3 2)
 
 {- x = 5 + y -}
 a3 :: Comb
-a3 = "x" := 5 :+ "y"
+a3 = "x" := Bin Add 5 "y"
 
 {- x = 5 + f y -}
 a4 :: Comb
-a4 = "x" := 5 :+ Exe "f" ("y" :| [])
+a4 = "x" := Bin Add 5 (Exe "f" ("y" :| []))
 
 {- f x = (x + x) * x -}
 f1 :: Comb
-f1 = Fun "f" ("x" :| []) (("x" :+ "x") :* "x") empty
+f1 = Fun "f" ("x" :| []) (Bin Mul (Bin Add "x" "x") "x") empty
 
 {- f x y = (x + y) * x / y -}
 f2 :: Comb
-f2 = Fun "f" ("x" :| ["y"]) (("x" :+ "y") :* "x" :/ "y") empty
+f2 = Fun "f" ("x" :| ["y"]) (Bin Div (Bin Mul (Bin Add "x" "y") "x") "y") empty
 
 {-
 f x y = g x + z
@@ -128,10 +135,10 @@ f3 :: Comb
 f3 = Fun
        "f"
        ("x" :| ["y"])
-       (Exe "g" ("x" :| []) :+ "z")
+       (Bin Add (Exe "g" ("x" :| [])) "z")
        (fromList [
-                   ("g", Fun "g" ("a" :| []) ("a" :/ 2) empty)
-                 , ("z", "z" := "y" :* 2)
+                   ("g", Fun "g" ("a" :| []) (Bin Div "a" 2) empty)
+                 , ("z", "z" := Bin Mul "y" 2)
                  ])
 
 {-
@@ -142,7 +149,7 @@ p1 :: Prog
 p1 = Prog $ fromList
   [
     ("x", "x" := 5)
-  , ("main", "main" := "x" :* 2)
+  , ("main", "main" := Bin Mul "x" 2)
   ]
 
 {-
@@ -154,8 +161,8 @@ p2 :: Prog
 p2 = Prog $ fromList
   [
     ("x", "x" := 5)
-  , ("y", "y" := "x" :* 2)
-  , ("main", "main" := "x" :+ 1 :- "y")
+  , ("y", "y" := Bin Mul "x" 2)
+  , ("main", "main" := Bin Sub (Bin Add "x" 1) "y")
   ]
 
 {-
@@ -167,8 +174,8 @@ p3 :: Prog
 p3 = Prog $ fromList
   [
     ("y", "y" := 5)
-  , ("f", Fun "f" ("x" :| []) ("y" :* 2 :- "x") empty)
-  , ("main", "main" := Exe "f" (3 :| []) :- 2 :* "y")
+  , ("f", Fun "f" ("x" :| []) (Bin Sub (Bin Mul "y" 2) "x") empty)
+  , ("main", "main" := Bin Sub (Exe "f" (3 :| [])) (Bin Mul 2 "y"))
   ]
 
 {-
@@ -189,22 +196,22 @@ p4 :: Prog
 p4 = Prog $ fromList
   [
     ("z", "z" := 5)
-  , ("f", Fun "f" ("x" :| []) ("z" :* 2 :- "x") empty)
-  , ("u", "u" := 7 :+ Exe "f" ("z" :| []))
+  , ("f", Fun "f" ("x" :| []) (Bin Sub (Bin Mul "z" 2) "x") empty)
+  , ("u", "u" := Bin Add 7 (Exe "f" ("z" :| [])))
   , (
       "g"
     , Fun
         "g"
         ("x" :| ["y"])
-        (Exe "f" ("y" :| []) :* Exe "h" ("x" :| []) :* 3 :/ "z" :- 2 :* "w")
+        (Bin Sub (Bin Div (Bin Mul (Bin Mul (Exe "f" ("y" :| [])) (Exe "h" ("x" :| []))) 3) "z") (Bin Mul 2 "w"))
         (fromList
            [
-             ("h", Fun "h" ("x" :| []) (Exe "f" ("x" :| []) :/ 3) empty)
-           , ("w", "w" := "u" :+ 2)
+             ("h", Fun "h" ("x" :| []) (Bin Div (Exe "f" ("x" :| [])) 3) empty)
+           , ("w", "w" := Bin Add "u" 2)
            ]
         )
     )
-  , ("main", "main" := Exe "f" (3 :| []) :- 2 :* "z" :+ Exe "g" ("u" :| ["z"]) :- "z")
+  , ("main", "main" := Bin Sub (Bin Add (Bin Sub (Exe "f" (3 :| [])) (Bin Mul 2 "z")) (Exe "g" ("u" :| ["z"]))) "z")
   ]
 
 {-
@@ -213,7 +220,7 @@ main = 3 * 2
 p5 :: Prog
 p5 = Prog $ fromList
   [
-    ("main", "main" := 3 :* 2)
+    ("main", "main" := Bin Mul 3 2)
   ]
 
 {-
@@ -222,7 +229,7 @@ main = (3 + 2) / ((3 - 2) * 4 + 6)
 p6 :: Prog
 p6 = Prog $ fromList
   [
-    ("main", "main" := (3 :+ 2) :/ ((3 :- 2) :* 4 :+ 6))
+    ("main", "main" := Bin Div (Bin Add 3 2) (Bin Add (Bin Mul (Bin Sub 3 2) 4) 6))
   ]
 
 {-
@@ -232,8 +239,8 @@ main = f 3 - 2
 p7 :: Prog
 p7 = Prog $ fromList
   [
-    ("f", Fun "f" ("x" :| []) (2 :- "x") empty)
-  , ("main", "main" := Exe "f" (3 :| []) :- 2)
+    ("f", Fun "f" ("x" :| []) (Bin Sub 2 "x") empty)
+  , ("main", "main" := Bin Sub (Exe "f" (3 :| [])) 2)
   ]
 
 {-
@@ -250,19 +257,19 @@ p8 :: Prog
 p8 = Prog $ fromList
   [
     ("x", "x" := 5)
-  , ("y", "y" := 7 :+ 5 :* "x")
+  , ("y", "y" := Bin Add 7 (Bin Mul 5 "x"))
   , (
       "f"
     , Fun
         "f"
         ("u" :| ["w"])
-        (Exe "g" ("u" :| []) :* 3 :/ "y" :- 2 :* "x" :+ Exe "g" ("w" :| []))
+        (Bin Add (Bin Sub (Bin Div (Bin Mul (Exe "g" ("u" :| [])) 3) "y") (Bin Mul 2 "x")) (Exe "g" ("w" :| [])))
         (fromList
            [
-             ("g", Fun "g" ("a" :| []) (5 :* "a" :/ 3) empty)
+             ("g", Fun "g" ("a" :| []) (Bin Div (Bin Mul 5 "a") 3) empty)
            ]
         )
     )
-  , ("main", "main" := Exe "f" (3 :| ["y"]) :- 2 :* "x" :+ Exe "f" ("y" :| [0]) :- "y")
+  , ("main", "main" := Bin Sub (Bin Add (Bin Sub (Exe "f" (3 :| ["y"])) (Bin Mul 2 "x")) (Exe "f" ("y" :| [0]))) "y")
   ]
 

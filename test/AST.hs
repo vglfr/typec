@@ -4,7 +4,7 @@ module AST where
 
 import Prelude hiding (exp)
 
-import Control.Applicative (liftA2)
+import Control.Applicative (liftA2, liftA3)
 import Data.List.NonEmpty (fromList)
 
 import Data.HashMap.Strict (empty)
@@ -15,8 +15,24 @@ import Test.QuickCheck
   )
 import Text.Trifecta (eof, foldResult, parseString)
 
-import Typec.AST (Comb ((:=), Fun), Exp ((:+), (:-), (:*), (:/), Exe, Val, Var), Id (Id), Prog (Prog))
+import Typec.AST
+  (
+    Comb ((:=), Fun)
+  , Exp (Bin, Exe, Val, Var)
+  , Id (Id)
+  , Op (Add, Div, Mul, Sub)
+  , Prog (Prog)
+  )
 import Typec.Parser (fromList, parseComb, parseExp, parseId, parseProg)
+
+instance Arbitrary Op where
+  arbitrary = oneof $ fmap pure
+                [
+                  Add
+                , Div
+                , Mul
+                , Sub
+                ]
 
 instance Arbitrary Id where
   arbitrary = Id <$> liftA2 (:) start nexts
@@ -34,10 +50,7 @@ instance Arbitrary Exp where
               ]
     exp n = oneof
               [
-                liftA2 (:+) (sex n) (sex n)
-              , liftA2 (:-) (sex n) (sex n)
-              , liftA2 (:*) (sex n) (sex n)
-              , liftA2 (:/) (sex n) (sex n)
+                liftA3 Bin arbitrary (sex n) (sex n)
               , exe n
               , var
               , val

@@ -6,7 +6,7 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Trifecta (eof, foldResult, parseString)
 
-import Typec.AST (Exp ((:+), (:-), (:*), (:/), Exe))
+import Typec.AST (Exp (Bin, Exe), Op (Add, Div, Mul, Sub))
 import Typec.Example
   (
     a1, a2, a3, a4
@@ -191,67 +191,67 @@ testParseExp = describe "Typec.Parser" $ do
     parse "(1 + 2 ) " `shouldBe` Just b1
 
   it "parseExp (1 + 2) + (3 + 4)" $ do
-    parse "(1 + 2) + (3 + 4)" `shouldBe` Just ((1 :+ 2) :+ (3 :+ 4))
+    parse "(1 + 2) + (3 + 4)" `shouldBe` Just (Bin Add (Bin Add 1 2) (Bin Add 3 4))
 
   it "parseExp (1 + 2) + 3" $ do
-    parse "(1 + 2) + 3" `shouldBe` Just ((1 :+ 2) :+ 3)
+    parse "(1 + 2) + 3" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (1 + (2 + 3)) + 4" $ do
-    parse "(1 + (2 + 3)) + 4" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+    parse "(1 + (2 + 3)) + 4" `shouldBe` Just (Bin Add (Bin Add 1 (Bin Add 2 3)) 4)
 
   it "parseExp (1 + (2 + 3)) + ((4))" $ do
-    parse "(1 + (2 + 3)) + ((4))" `shouldBe` Just ((1 :+ (2 :+ 3)) :+ 4)
+    parse "(1 + (2 + 3)) + ((4))" `shouldBe` Just (Bin Add (Bin Add 1 (Bin Add 2 3)) 4)
 
   it "parseExp ((1 + 2) + 3)" $ do
-    parse "((1 + 2) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+    parse "((1 + 2) + 3)" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (((1 + 2)) + 3)" $ do
-    parse "(((1 + 2)) + 3)" `shouldBe` Just ((1 :+ 2) :+ 3)
+    parse "(((1 + 2)) + 3)" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (((1 + 2) + 3))" $ do
-    parse "(((1 + 2) + 3))" `shouldBe` Just ((1 :+ 2) :+ 3)
+    parse "(((1 + 2) + 3))" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp 1 + 2 + 3" $ do
-    parse "1 + 2 + 3" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "1 + 2 + 3" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp 1 + 2 + x" $ do
-    parse "1 + 2 + x" `shouldBe` Just (1 :+ 2 :+ "x")
+    parse "1 + 2 + x" `shouldBe` Just (Bin Add (Bin Add 1 2) "x")
 
   it "parseExp 1 + 2 - 3" $ do
-    parse "1 + 2 - 3" `shouldBe` Just (1 :+ 2 :- 3)
+    parse "1 + 2 - 3" `shouldBe` Just (Bin Sub (Bin Add 1 2) 3)
 
   it "parseExp 1 * 2 - 3" $ do
-    parse "1 * 2 - 3" `shouldBe` Just (1 :* 2 :- 3)
+    parse "1 * 2 - 3" `shouldBe` Just (Bin Sub (Bin Mul 1 2) 3)
 
   it "parseExp 1 * 2 / 3" $ do
-    parse "1 * 2 / 3" `shouldBe` Just (1 :* 2 :/ 3)
+    parse "1 * 2 / 3" `shouldBe` Just (Bin Div (Bin Mul 1 2) 3)
 
   it "parseExp (1 + 2 + 3)" $ do
-    parse "(1 + 2 + 3)" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "(1 + 2 + 3)" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp ((1 + 2 + 3))" $ do
-    parse "((1 + 2 + 3))" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "((1 + 2 + 3))" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (((1 + 2 + 3)))" $ do
-    parse "(((1 + 2 + 3)))" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "(((1 + 2 + 3)))" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (1 + 2) + 3" $ do
-    parse "(1 + 2) + 3" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "(1 + 2) + 3" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp 1 + (2 + 3)" $ do
-    parse "1 + (2 + 3)" `shouldBe` Just (1 :+ (2 :+ 3))
+    parse "1 + (2 + 3)" `shouldBe` Just (Bin Add 1 (Bin Add 2 3))
 
   it "parseExp ((1 + 2) + 3)" $ do
-    parse "((1 + 2) + 3)" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "((1 + 2) + 3)" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp (1 + (2 + 3))" $ do
-    parse "(1 + (2 + 3))" `shouldBe` Just (1 :+ (2 :+ 3))
+    parse "(1 + (2 + 3))" `shouldBe` Just (Bin Add 1 (Bin Add 2 3))
 
   it "parseExp ((((1 + 2)) + 3))" $ do
-    parse "((((1 + 2)) + 3))" `shouldBe` Just (1 :+ 2 :+ 3)
+    parse "((((1 + 2)) + 3))" `shouldBe` Just (Bin Add (Bin Add 1 2) 3)
 
   it "parseExp ((1 + ((2 + 3))))" $ do
-    parse "((1 + ((2 + 3))))" `shouldBe` Just (1 :+ (2 :+ 3))
+    parse "((1 + ((2 + 3))))" `shouldBe` Just (Bin Add 1 (Bin Add 2 3))
 
   it "parseExp 1 + 2" $ do
     parse "1 + 2" `shouldBe` Just b1
@@ -335,10 +335,10 @@ testParseExp = describe "Typec.Parser" $ do
     show <$> parse "5 + f x (3 / y) - 3" `shouldBe` Just "5 + f x (3 / y) - 3"
 
   it "parseExp 5 + f x" $ do
-    parse "5 + f x" `shouldBe` Just (5 :+ Exe "f" ("x" :| []))
+    parse "5 + f x" `shouldBe` Just (Bin Add 5 (Exe "f" ("x" :| [])))
 
   it "parseExp 5 + f x y" $ do
-    parse "5 + f x y" `shouldBe` Just (5 :+ Exe "f" ("x" :| ["y"]))
+    parse "5 + f x y" `shouldBe` Just (Bin Add 5 (Exe "f" ("x" :| ["y"])))
 
 testParseAss :: Spec
 testParseAss = describe "Typec.Parser" $ do
@@ -410,5 +410,5 @@ testParseProg = describe "Typec.Parser" $ do
   it "parseProg y = 5\\nf x = y * 2 - x\\nmain = f 3 - 2 * y" $ do
     parse "y = 5\nf x = y * 2 - x\nmain = f 3 - 2 * y" `shouldBe` Just p3
 
-  it "parseProg z = 5\\n\\nf x = y * 2 - x\\n\\nu = 7 + f y\\n\\ng x y = f y * h x * 3 / z - 2 * w\\n where\\n  h x = f x / 3\\n  w = u + 2\\n\\nmain = f 3 - 2 * y + g x y - z" $ do
-    parse "z = 5\n\nf x = y * 2 - x\n\nu = 7 + f y\n\ng x y = f y * h x * 3 / z - 2 * w\n where\n  h x = f x / 3\n  w = u + 2\n\nmain = f 3 - 2 * y + g x y - z" `shouldBe` Just p4
+  it "parseProg z = 5\\n\\nf x = z * 2 - x\\n\\nu = 7 + f z\\n\\ng x y = f y * h x * 3 / z - 2 * w\\n where\\n  h x = f x / 3\\n  w = u + 2\\n\\nmain = f 3 - 2 * z + g u z - z" $ do
+    parse "z = 5\n\nf x = z * 2 - x\n\nu = 7 + f z\n\ng x y = f y * h x * 3 / z - 2 * w\n where\n  h x = f x / 3\n  w = u + 2\n\nmain = f 3 - 2 * z + g u z - z" `shouldBe` Just p4

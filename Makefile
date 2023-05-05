@@ -5,14 +5,20 @@ cpath = /nix/store/8xk4yl1r3n6kbyn05qhan7nbag7npymx-glibc-2.35-224/lib
 clean:
 	@rm -f \
 		asm/temp.s asm/temp.o asm/a.out \
+		asm/printf.o asm/printf \
 		asm/hello.o asm/hello \
-		asm/dprint.o asm/dprint \
-		asm/printf.o asm/printf
+		asm/fpoint.o asm/fpoint \
+		asm/dprint.o asm/dprint
 
 dprint:
 	@nasm -felf64 asm/dprint.s -o asm/dprint.o
 	@ld asm/dprint.o -o asm/dprint 
 	@./asm/dprint
+
+fpoint:
+	@nasm -felf64 asm/fpoint.s -o asm/fpoint.o
+	@gcc -z noexecstack asm/fpoint.o -o asm/fpoint
+	@./asm/fpoint
 
 hello:
 	@nasm -felf64 asm/hello.s -o asm/hello.o

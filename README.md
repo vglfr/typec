@@ -5,6 +5,9 @@
 + tree-walk interpreter
 
 - native asmgen
+  - FP
+  - variables
+  - function
 
 - comparisons
 - conditionals

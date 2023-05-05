@@ -27,18 +27,6 @@ instance Show Val where
   show (Imm x) = show x
   show (Ref x) = "[" <> show x <> "]"
 
-run :: String -> IO ()
-run s = do
-  putStrLn s
-  writeFile "/tmp/temp.s" s
-  readProcess "nasm" ["-f", "elf64", "-o", "/tmp/temp.o", "/tmp/temp.s"] mempty >>= putStrLn
-  readProcess "gcc" ["-z", "noexecstack", "-o", "/tmp/temp", "-lc", "/tmp/temp.o"] mempty >>= putStrLn
-  readProcess "/tmp/temp" mempty mempty >>= putStrLn
-
-compile :: [Ins] -> String
-compile is = unlines $ declare <> global <> main <> fmap offset (instrs is <> printf <> exit)
- where offset = ("        " <>)
-
 spool :: Exp -> [Ins]
 spool t = let es = flat t
            in fmap (ref es) es
@@ -53,6 +41,35 @@ spool t = let es = flat t
                   Val x -> Imm x
                   _ -> Ref $ index e es - index e' es 
   index e es = fromJust $ elemIndex e es
+
+compile :: [Ins] -> String
+compile is = unlines $
+     global
+  <> section ".data" (data' is)
+  <> section ".bss"  (bss is)
+  <> section ".text" (text is)
+
+global :: [Line]
+global =
+  [
+    "global main"
+  , "extern printf"
+  ]
+
+section :: String -> [Line] -> [Line]
+section s is = "section " <> s : fmap offset is
+ where offset = ("        " <>)
+
+  -- <> (instrs is <> printf <> exit)
+
+data' :: [Ins] -> [Line]
+data' = undefined
+
+bss :: [Ins] -> [Line]
+bss = undefined
+
+text :: [Ins] -> [Line]
+text = undefined
 
 instrs :: [Ins] -> [Line]
 instrs = concatMap instr
@@ -114,34 +131,27 @@ div v = case v of
 push :: [Line]
 push = pure $ "push        rax"
 
-declare :: [Line]
-declare =
-  [
-    "global main"
-  , "extern printf"
-  ]
-
-global :: [Line]
-global =
-  [
-    "FSTR db \"%i\", 10, 0"
-  ]
+-- global :: [Line]
+-- global =
+--   [
+--     "FST: db \"%i\", 10, 0"
+--   ]
 
 main :: [Line]
 main =
   [
-    "section .text"
-  , "main:"
+    -- "section .text"
+    "main:"
   ]
 
 printf :: [Line]
 printf =
   [
     "; printf"
-  , "pop         rsi"
   , "push        rbp"
-  , "mov         rdi, FSTR"
-  , "xor         rax, rax"
+  , "movsd       xmm0, qword [RES]"
+  , "mov         rdi, FST"
+  , "mov         rax, 1"
   , "call        printf"
   , "pop         rbp"
   , "xor         rax, rax"
@@ -156,3 +166,11 @@ exit =
   , "xor         rdi, rdi"
   , "syscall"
   ]
+
+run :: String -> IO ()
+run s = do
+  putStrLn s
+  writeFile "/tmp/temp.s" s
+  readProcess "nasm" ["-f", "elf64", "-o", "/tmp/temp.o", "/tmp/temp.s"] mempty >>= putStrLn
+  readProcess "gcc" ["-z", "noexecstack", "-o", "/tmp/temp", "-lc", "/tmp/temp.o"] mempty >>= putStrLn
+  readProcess "/tmp/temp" mempty mempty >>= putStrLn

@@ -2,52 +2,70 @@
 
 module Typec.Compiler where
 
-import Prelude hiding (div)
+import Prelude hiding (div, lookup)
 
-import Data.List (elemIndex)
+import Data.List (elemIndex, intercalate)
 import Data.Maybe (fromJust)
 
+import Data.HashMap.Strict (HashMap, insert, lookup, size, toList)
 import System.Process (readProcess)
 
 import Typec.AST (Exp (Bin, Val), Op (Add, Div, Mul, Sub))
 
 type Line = String
+type Tape = ([Ins], HashMap Double Int)
 
 data Ins
   = Two Op Val Val
 
 data Val
-  = Imm Double
+  = Con Int
   | Ref Int
 
 instance Show Ins where
   show (Two o a b) = show a <> show o <> show b
 
 instance Show Val where
-  show (Imm x) = show x
+  show (Con x) = "C" <> show x
   show (Ref x) = "[" <> show x <> "]"
 
-spool :: Exp -> [Ins]
+isCon :: Val -> Bool
+isCon v = case v of
+            Con _ -> True
+            _ -> False
+
+ref :: Val -> Int
+ref (Ref x) = x
+
+spool :: Exp -> Tape
 spool t = let es = flat t
-           in fmap (ref es) es
+           in foldr (acc es) mempty es
  where
   flat e = case e of
              Bin _ a b -> flat a <> flat b <> [e]
              _ -> mempty
-  ref es e = case e of
-               Bin o a b -> Two o (val a es e) (val b es e)
-               _ -> undefined
-  val e es e' = case e of
-                  Val x -> Imm x
-                  _ -> Ref $ index e es - index e' es 
+  acc es e (is, m) = case e of
+                       Bin o a b -> let (v1, m1) = val a m  es e
+                                        (v2, m2) = val b m1 es e
+                                     in (Two o v1 v2 : is, m2)
+                       _ -> undefined
+  val e m es e' = case e of
+                    Val v -> let (c, m') = case lookup v m of
+                                             Just x -> (x, m)
+                                             Nothing -> let s = size m
+                                                         in (s, insert v s m)
+                              in (Con c, m')
+                    _ -> (Ref $ index e es - index e' es, m)
   index e es = fromJust $ elemIndex e es
 
-compile :: [Ins] -> String
-compile is = unlines $
-     global
-  <> section ".data" (data' is)
-  <> section ".bss"  (bss is)
-  <> section ".text" (text is)
+compile :: Tape -> String
+compile (is, m) = unlines $ intercalate (pure mempty)
+  [
+    global
+  , section ".data" (data' m)
+  , section ".bss"   bss
+  , section ".text" (text is)
+  ]
 
 global :: [Line]
 global =
@@ -58,96 +76,59 @@ global =
 
 section :: String -> [Line] -> [Line]
 section s is = "section " <> s : fmap offset is
- where offset = ("        " <>)
+ where
+  offset cs = if last cs == ':'
+              then cs
+              else "        " <> cs
 
-  -- <> (instrs is <> printf <> exit)
+data' :: HashMap Double Int -> [Line]
+data' m = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList m)
+ where
+  fconst k v = "C" <> show v <> ":         dq " <> show k
 
-data' :: [Ins] -> [Line]
-data' = undefined
-
-bss :: [Ins] -> [Line]
-bss = undefined
+bss :: [Line]
+bss = pure "RES:        resq 1"
 
 text :: [Ins] -> [Line]
-text = undefined
+text is = main <> concatMap block is <> fstp <> printf <> exit
+ where
+  block i = comment (show i) : instr i
+  instr (Two o a b)
+    | isCon a && isCon b = [fld a, op1 o b]
+    | isCon a = [fld a, fxch, op0 o]
+    | isCon b = pure $ op1 o b
+    | ref a < ref b = [op0 o]
+    | ref a > ref b = [fxch, op0 o]
+  fld v = "fld         qword [" <> show v <> "]"
+  op1 o v = case o of
+              Add -> "fadd        qword [" <> show v <> "]"
+              Sub -> "fsub        qword [" <> show v <> "]"
+              Mul -> "fmul        qword [" <> show v <> "]"
+              Div -> "fdiv        qword [" <> show v <> "]"
+  fxch = "fxch"
+  op0 o = case o of
+            Add -> "faddp"
+            Sub -> "fsubp"
+            Mul -> "fmulp"
+            Div -> "fdivp"
 
-instrs :: [Ins] -> [Line]
-instrs = concatMap instr
-
-instr :: Ins -> [Line]
-instr i@(Two o a b)
-  =  comm i
-  <> stage a b
-  <> invoke o b
-  <> push
-
-comm :: Ins -> [Line]
-comm i = pure $ "; " <> show i
-
-stage :: Val -> Val -> [Line]
-stage a b = case a of
-              Imm _ -> case b of
-                         Imm _ -> mov "rax" a
-                         Ref _ -> mov "rax" a <> pop "rbx"
-              Ref r -> case b of
-                         Imm _ -> pop "rax"
-                         Ref r' -> if r > r'
-                                   then pop "rax" <> pop "rbx"
-                                   else pop "rbx" <> pop "rax"
-
-invoke :: Op -> Val -> [Line]
-invoke o v = case o of
-               Add -> add v
-               Sub -> sub v
-               Mul -> mul v
-               Div -> div v
-
-mov :: String -> Val -> [Line]
-mov r (Imm v) = pure $ "mov         " <> r <> ", " <> show (fromEnum v)
-
-pop :: String -> [Line]
-pop r = pure $ "pop         " <> r
-
-add :: Val -> [Line]
-add v = pure $ case v of
-                 Imm i -> "add         rax, " <> show (fromEnum i)
-                 Ref _ -> "add         rax, rbx"
-
-sub :: Val -> [Line]
-sub v = pure $ case v of
-                 Imm i -> "sub         rax, " <> show (fromEnum i)
-                 Ref _ -> "sub         rax, rbx"
-
-mul :: Val -> [Line]
-mul v = case v of
-          Imm _ -> mov "rbx" v <> ["imul        rbx"]
-          Ref _ ->                ["imul        rbx"]
-
-div :: Val -> [Line]
-div v = case v of
-          Imm _ -> mov "rbx" v <> ["cqo", "idiv        rbx"]
-          Ref _ ->                ["cqo", "idiv        rbx"]
-
-push :: [Line]
-push = pure $ "push        rax"
-
--- global :: [Line]
--- global =
---   [
---     "FST: db \"%i\", 10, 0"
---   ]
+comment :: String -> Line
+comment s = "; " <> s
 
 main :: [Line]
-main =
+main = pure "main:"
+
+fstp :: [Line]
+fstp =
   [
-    -- "section .text"
-    "main:"
+    comment "fstp"
+  , "fstp        qword [RES]"
   ]
 
 printf :: [Line]
 printf =
   [
-    "; printf"
+    comment "printf"
   , "push        rbp"
   , "movsd       xmm0, qword [RES]"
   , "mov         rdi, FST"
@@ -161,7 +142,7 @@ printf =
 exit :: [Line]
 exit =
   [
-    "; exit"
+    comment "exit"
   , "mov         rax, 60"
   , "xor         rdi, rdi"
   , "syscall"

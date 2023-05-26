@@ -4,7 +4,7 @@ module Typec.Compiler where
 
 import Prelude hiding (div, lookup)
 
-import Data.List (elemIndex, intercalate)
+import Data.List (elemIndex, intercalate, nub)
 import Data.Maybe (fromJust)
 
 import Data.Graph.Inductive (Adj, Context, Gr, buildGr)
@@ -84,7 +84,7 @@ graph (Prog cs) = let (ks,vs) = unzip . toList $ cs
                      Fun (Id i) _ e _ -> ([],n,i,vars e is) : a
   vars :: Exp -> [Id] -> Adj String
   vars e is = case e of
-                Bin _ e1 e2  -> vars e1 is <> vars e2 is
+                Bin _ e1 e2  -> nub $ vars e1 is <> vars e2 is
                 Var i@(Id v) -> [(v,fromJust $ elemIndex i is)]
                 Val _ -> mempty
   -- throw "undefined reference" on lookup error

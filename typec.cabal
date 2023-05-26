@@ -48,7 +48,7 @@ test-suite typec
     Main.hs
   other-modules:
       AST
---    , Compiler
+    , Compiler
     , Interpreter
     , Parser
   type:

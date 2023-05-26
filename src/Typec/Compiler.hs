@@ -2,13 +2,13 @@
 
 module Typec.Compiler where
 
-import Prelude hiding (div, lookup)
+import Prelude hiding (div)
 
-import Data.List (elemIndex, intercalate, nub)
+import Data.List (elemIndex, intercalate, lookup, nub)
 import Data.Maybe (fromJust)
 
-import Data.Graph.Inductive (Adj, Context, Gr, buildGr)
-import Data.HashMap.Strict (HashMap, insert, lookup, size, toList)
+import Data.Graph.Inductive (Adj, Context, Gr, buildGr, postorder, dff, labNodes, lab)
+import Data.HashMap.Strict ((!?), HashMap, insert, lookup, size, toList)
 import System.Process (readProcess)
 
 import Typec.AST
@@ -19,9 +19,13 @@ import Typec.AST
   , Op (Add, Div, Mul, Sub)
   , Prog (Prog)
   )
+import Data.Tuple (swap)
+import Debug.Trace (traceShowId)
 
 type Line = String
-type Tape = ([Ins], HashMap Double Int, [String])
+type Vals = HashMap Double Int
+type Vars = [String]
+type Tape = ([Ins], Vals, Vars)
 
 data Ins
   = Two Op Val Val
@@ -55,7 +59,7 @@ instance Spool Exp where
                                             in (Two o v1 v2 : is, cs2, vs)
                               _ -> undefined
     val e cs es e' = case e of
-                       Val v -> let (c, cs') = case lookup v cs of
+                       Val v -> let (c, cs') = case Data.HashMap.Strict.lookup v cs of
                                                  Just x -> (x, cs)
                                                  Nothing -> let s = size cs
                                                              in (s, insert v s cs)
@@ -68,11 +72,12 @@ instance Spool Comb where
                          in (is <> [Sav i], cs, [i])
 
 instance Spool Prog where
-  spool (Prog _) = undefined
-
-  -- lookup main
-  -- lookup all main deps
-  -- lookup residue in arbitrary order
+  spool p@(Prog ss) = let cs' = traceShowId . flatten . graph $ p
+                       in foldr acc mempty cs'
+   where
+    acc :: String -> Tape -> Tape
+    acc s (is,cs,vs) = let (is',cs',vs') = spool . fromJust $ ss !? Id s
+                        in (is' <> is,cs' <> cs,vs' <> vs)
 
 graph :: Prog -> Gr String String
 graph (Prog cs) = let (ks,vs) = unzip . toList $ cs
@@ -89,8 +94,10 @@ graph (Prog cs) = let (ks,vs) = unzip . toList $ cs
                 Val _ -> mempty
   -- throw "undefined reference" on lookup error
 
-flatten :: Gr String () -> [Comb]
-flatten = undefined
+flatten :: Gr String String -> [String]
+flatten g = fmap (fromJust . lab g) . postorder . head . dff [main'] $ g
+ where
+  main' = fromJust . Data.List.lookup "main" . fmap swap . labNodes $ g
   -- throw "cyclic reference" on bidirectioned edge
 
 compile :: Tape -> String
@@ -117,7 +124,7 @@ section s is = "section " <> s : fmap offset is
               else "        " <> cs
 
 data' :: HashMap Double Int -> [Line]
-data' m = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList m)
+data' cs = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList cs)
  where
   fconst k v = "C" <> show v <> ":         dq " <> show k
 

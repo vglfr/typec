@@ -41,6 +41,6 @@ evaluate c e = case e of
            Div -> (/)
 
 interpret :: Prog -> Double
-interpret (Prog c) = maybe (error "no main") (evaluate c . expr) $ c !? "main"
+interpret (Prog cs) = maybe (error "no main") (evaluate cs . expr) $ cs !? "main"
  where
   expr (_ := e) = e

@@ -273,3 +273,25 @@ p8 = Prog $ fromList
   , ("main", "main" := Bin Sub (Bin Add (Bin Sub (Exe "f" (3 :| ["y"])) (Bin Mul 2 "x")) (Exe "f" ("y" :| [0]))) "y")
   ]
 
+{-
+a = x - 3
+b = 5 * a - a
+c = d + 4 - x
+d = a
+x = 5
+y = x * 2
+z = x + 4 * y + b
+main = x + 1 - y / a - 2 * z + b * 3 / c
+-}
+p9 :: Prog
+p9 = Prog $ fromList
+  [
+    ("a", "a" := Bin Sub "x" 3)
+  , ("b", "b" := Bin Sub (Bin Mul 5 "a") "a")
+  , ("c", "c" := Bin Sub (Bin Add "d" 4) "x")
+  , ("d", "d" := "a")
+  , ("x", "x" := 5)
+  , ("y", "y" := Bin Mul "x" 2)
+  , ("z", "z" := Bin Add (Bin Add "x" (Bin Mul 4 "y")) "b")
+  , ("main", "main" := Bin Add (Bin Sub (Bin Sub (Bin Add "x" 1) (Bin Div "y" "a")) (Bin Mul 2 "z")) (Bin Div (Bin Mul "b" 3) "c"))
+  ]

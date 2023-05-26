@@ -7,16 +7,25 @@ import Prelude hiding (div, lookup)
 import Data.List (elemIndex, intercalate)
 import Data.Maybe (fromJust)
 
+import Data.Graph.Inductive (Adj, Context, Gr, buildGr)
 import Data.HashMap.Strict (HashMap, insert, lookup, size, toList)
 import System.Process (readProcess)
 
-import Typec.AST (Exp (Bin, Val), Op (Add, Div, Mul, Sub))
+import Typec.AST
+  (
+    Comb ((:=), Fun)
+  , Exp (Bin, Val, Var)
+  , Id (Id)
+  , Op (Add, Div, Mul, Sub)
+  , Prog (Prog)
+  )
 
 type Line = String
-type Tape = ([Ins], HashMap Double Int)
+type Tape = ([Ins], HashMap Double Int, [String])
 
 data Ins
   = Two Op Val Val
+  | Sav String
 
 data Val
   = Con Int
@@ -24,46 +33,72 @@ data Val
 
 instance Show Ins where
   show (Two o a b) = show a <> show o <> show b
+  show (Sav v) = v
 
 instance Show Val where
   show (Con x) = "C" <> show x
   show (Ref x) = "[" <> show x <> "]"
 
-isCon :: Val -> Bool
-isCon v = case v of
-            Con _ -> True
-            _ -> False
+class Spool a where
+  spool :: a -> Tape
 
-ref :: Val -> Int
-ref (Ref x) = x
+instance Spool Exp where
+  spool t = let es = flat t
+             in foldr (acc es) mempty es
+   where
+    flat e = case e of
+               Bin _ a b -> flat a <> flat b <> [e]
+               _ -> mempty
+    acc es e (is, cs, vs) = case e of
+                              Bin o a b -> let (v1, cs1) = val a cs  es e
+                                               (v2, cs2) = val b cs1 es e
+                                            in (Two o v1 v2 : is, cs2, vs)
+                              _ -> undefined
+    val e cs es e' = case e of
+                       Val v -> let (c, cs') = case lookup v cs of
+                                                 Just x -> (x, cs)
+                                                 Nothing -> let s = size cs
+                                                             in (s, insert v s cs)
+                                 in (Con c, cs')
+                       _ -> (Ref $ index e es - index e' es, cs)
+    index e es = fromJust $ elemIndex e es
 
-spool :: Exp -> Tape
-spool t = let es = flat t
-           in foldr (acc es) mempty es
+instance Spool Comb where
+  spool ((Id i) := e) = let (is, cs, _) = spool e
+                         in (is <> [Sav i], cs, [i])
+
+instance Spool Prog where
+  spool (Prog _) = undefined
+
+  -- lookup main
+  -- lookup all main deps
+  -- lookup residue in arbitrary order
+
+graph :: Prog -> Gr String String
+graph (Prog cs) = let (ks,vs) = unzip . toList $ cs
+                   in buildGr . foldr (acc ks) mempty . zip [0..size cs - 1] $ vs
  where
-  flat e = case e of
-             Bin _ a b -> flat a <> flat b <> [e]
-             _ -> mempty
-  acc es e (is, m) = case e of
-                       Bin o a b -> let (v1, m1) = val a m  es e
-                                        (v2, m2) = val b m1 es e
-                                     in (Two o v1 v2 : is, m2)
-                       _ -> undefined
-  val e m es e' = case e of
-                    Val v -> let (c, m') = case lookup v m of
-                                             Just x -> (x, m)
-                                             Nothing -> let s = size m
-                                                         in (s, insert v s m)
-                              in (Con c, m')
-                    _ -> (Ref $ index e es - index e' es, m)
-  index e es = fromJust $ elemIndex e es
+  acc :: [Id] -> (Int,Comb) -> [Context String String] -> [Context String String]
+  acc is (n,c) a = case c of
+                     Id i := e        -> ([],n,i,vars e is) : a
+                     Fun (Id i) _ e _ -> ([],n,i,vars e is) : a
+  vars :: Exp -> [Id] -> Adj String
+  vars e is = case e of
+                Bin _ e1 e2  -> vars e1 is <> vars e2 is
+                Var i@(Id v) -> [(v,fromJust $ elemIndex i is)]
+                Val _ -> mempty
+  -- throw "undefined reference" on lookup error
+
+flatten :: Gr String () -> [Comb]
+flatten = undefined
+  -- throw "cyclic reference" on bidirectioned edge
 
 compile :: Tape -> String
-compile (is, m) = unlines $ intercalate (pure mempty)
+compile (is, cs, vs) = unlines $ intercalate (pure mempty)
   [
     global
-  , section ".data" (data' m)
-  , section ".bss"   bss
+  , section ".data" (data' cs)
+  , section ".bss"  (bss vs)
   , section ".text" (text is)
   ]
 
@@ -86,8 +121,10 @@ data' m = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList m)
  where
   fconst k v = "C" <> show v <> ":         dq " <> show k
 
-bss :: [Line]
-bss = pure "RES:        resq 1"
+bss :: [String] -> [Line]
+bss vs = "RES:        resq 1" : fmap fvar vs
+ where
+  fvar v = v <> ":          resq 1"
 
 text :: [Ins] -> [Line]
 text is = main <> concatMap block is <> fstp <> printf <> exit
@@ -99,6 +136,11 @@ text is = main <> concatMap block is <> fstp <> printf <> exit
     | isCon b = pure $ op1 o b
     | ref a < ref b = [op0 o]
     | ref a > ref b = [fxch, op0 o]
+  instr (Sav s) = pure ("fstp        qword [" <> s <> "]")
+  isCon v = case v of
+              Con _ -> True
+              _ -> False
+  ref (Ref x) = x
   fld v = "fld         qword [" <> show v <> "]"
   op1 o v = case o of
               Add -> "fadd        qword [" <> show v <> "]"

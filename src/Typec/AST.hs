@@ -80,6 +80,7 @@ instance Show Op where
 
 instance Num Exp where
   fromInteger = Val . fromInteger
+  negate (Val n) = Val $ negate n
 
 instance Fractional Exp where
   fromRational = Val . fromRational

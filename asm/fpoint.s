@@ -2,15 +2,15 @@ global main
 extern printf
 
 section .data
-        FST: db "%.2f", 10, 0
-        C1: dq 2.0
-        C2: dq 6.0
-        C3: dq 1.0
-        C4: dq 4.0
-        C5: dq 3.0
+        FST:        db "%.2f", 10, 0
+        C1:         dq 2.0
+        C2:         dq 6.0
+        C3:         dq 1.0
+        C4:         dq 4.0
+        C5:         dq 3.0
 
 section .bss
-        RES: resq 1
+        RES:        resq 1
 
 section .text
 main:

@@ -6,7 +6,12 @@ import Data.List.NonEmpty (NonEmpty ((:|)))
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Trifecta (eof, foldResult, parseString)
 
-import Typec.AST (Exp (Bin, Exe), Op (Add, Div, Mul, Sub))
+import Typec.AST
+  (
+    Exp (Bin, Exe)
+  , Op (Add, Div, Mul, Sub)
+  )
+
 import Typec.Example
   (
     a1, a2, a3, a4
@@ -14,8 +19,8 @@ import Typec.Example
   , e1, e2, e3, e4, e5, e6
   , f1, f2, f3
   , i1, i2
-  , p1, p2, p3, p4
-  , v1, v2
+  , p1, p2, p3, p4, p5, p6, p7, p8, p9
+  , v1, v2, v3
   , w1, w2
   )
 import Typec.Parser (parseAss, parseComb, parseExe, parseExp, parseFun, parseId, parseProg, parseVal, parseVar)
@@ -75,7 +80,7 @@ testParseVal = describe "Typec.Parser" $ do
     parse "+5" `shouldBe` Just v1
 
   it "parseVal -5" $ do
-    show <$> parse "-5" `shouldBe` Just "-5"
+    parse "-5" `shouldBe` Just v3
 
   it "parseVal empty" $ do
     parse "" `shouldBe` Nothing
@@ -412,3 +417,18 @@ testParseProg = describe "Typec.Parser" $ do
 
   it "parseProg z = 5\\n\\nf x = z * 2 - x\\n\\nu = 7 + f z\\n\\ng x y = f y * h x * 3 / z - 2 * w\\n where\\n  h x = f x / 3\\n  w = u + 2\\n\\nmain = f 3 - 2 * z + g u z - z" $ do
     parse "z = 5\n\nf x = z * 2 - x\n\nu = 7 + f z\n\ng x y = f y * h x * 3 / z - 2 * w\n where\n  h x = f x / 3\n  w = u + 2\n\nmain = f 3 - 2 * z + g u z - z" `shouldBe` Just p4
+
+  it "parseProg main = 3 * 2" $ do
+    parse "main = 3 * 2" `shouldBe` Just p5
+
+  it "parseProg main = (3 + 2) / ((3 - 2) * 4 + 6)" $ do
+    parse "main = (3 + 2) / ((3 - 2) * 4 + 6)" `shouldBe` Just p6
+
+  it "parseProg f x = 2 - x\\nmain = f 3 - 2" $ do
+    parse "f x = 2 - x\nmain = f 3 - 2" `shouldBe` Just p7
+
+  it "parseProg x = 5\\ny = 7 + 5 * x\\n\\nf u w = g u * 3 / y - 2 * x + g w\\n where\\n  g a = 5 * a / 3\\n\\nmain = f 3 y - 2 * x + f y 0 - y" $ do
+    parse "x = 5\ny = 7 + 5 * x\n\nf u w = g u * 3 / y - 2 * x + g w\n where\n  g a = 5 * a / 3\n\nmain = f 3 y - 2 * x + f y 0 - y" `shouldBe` Just p8
+
+  it "parseProg a = x - 3\\nb = 5 * a - a\\nc = d + 4 - x\\nd = a\\nx = 5\\ny = x * 2\\nz = x + 4 * y + b\\nmain = x + 1 - y / a - 2 * z + b * 3 / c" $ do
+    parse "a = x - 3\nb = 5 * a - a\nc = d + 4 - x\nd = a\nx = 5\ny = x * 2\nz = x + 4 * y + b\nmain = x + 1 - y / a - 2 * z + b * 3 / c" `shouldBe` Just p9

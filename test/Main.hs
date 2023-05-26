@@ -3,6 +3,8 @@ module Main where
 import Test.Hspec (hspec)
 
 import AST (qtestComb, qtestExp, qtestId, qtestProg)
+-- import Compiler ()
+import Interpreter (testEvaluateBin, testEvaluateVal, testInterpret)
 import Parser
   (
     testParseAss, testParseComb, testParseExe, testParseExp, testParseFun
@@ -21,6 +23,10 @@ main = do
     testParseFun
     testParseComb
     testParseProg
+  hspec $ do
+    testEvaluateVal
+    testEvaluateBin
+    testInterpret
   qtestId
   qtestExp
   qtestComb

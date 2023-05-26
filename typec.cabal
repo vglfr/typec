@@ -15,6 +15,7 @@ common common
     -Wredundant-constraints
   build-depends:
       base == 4.17.*
+    , fgl == 5.8.*
     , hashable == 1.4.*
     , process == 1.6.*
     , trifecta == 2.1.*
@@ -47,6 +48,8 @@ test-suite typec
     Main.hs
   other-modules:
       AST
+--    , Compiler
+    , Interpreter
     , Parser
   type:
     exitcode-stdio-1.0

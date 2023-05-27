@@ -77,6 +77,10 @@ b8 = Bin Sub (Bin Add 5 (Exe "f" ("x" :| [3]))) 3
 b9 :: Exp
 b9 = Bin Sub (Bin Add 5 (Exe "f" ("x" :| [Bin Sub 3 "y"]))) 3
 
+{- x * 2 -}
+b10 :: Exp
+b10 = Bin Mul "x" 2
+
 {- f 5 -}
 e1 :: Exp
 e1 = Exe "f" (5 :| [])
@@ -116,6 +120,10 @@ a3 = "x" := Bin Add 5 "y"
 {- x = 5 + f y -}
 a4 :: Comb
 a4 = "x" := Bin Add 5 (Exe "f" ("y" :| []))
+
+{- main = 5 -}
+a5 :: Comb
+a5 = "main" := 5
 
 {- f x = (x + x) * x -}
 f1 :: Comb

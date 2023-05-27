@@ -13,11 +13,13 @@ import GHC.Show (showSpace)
 import Data.HashMap.Strict (HashMap, elems)
 import Data.Hashable (Hashable, hash, hashWithSalt)
 
-newtype Prog = Prog (HashMap Id Comb) deriving Eq
+newtype Prog = Prog Context deriving Eq
+
+type Context = HashMap Id Comb
 
 data Comb
   = Id := Exp
-  | Fun Id (NonEmpty Id) Exp (HashMap Id Comb)
+  | Fun Id (NonEmpty Id) Exp Context
   deriving Eq
 
 newtype Id = Id String deriving Eq

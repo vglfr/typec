@@ -7,19 +7,19 @@ import Prelude hiding (zip)
 
 import Data.List.NonEmpty (zip)
 
-import Data.HashMap.Strict ((!?), HashMap, unions)
+import Data.HashMap.Strict ((!?), unions)
 
 import Typec.AST
   (
     Comb ((:=), Fun)
+  , Context
   , Exp (Bin, Exe, Val, Var)
-  , Id
   , Op (Add, Div, Mul, Sub)
   , Prog (Prog)
   )
 import Typec.Parser (fromNonEmpty)
 
-evaluate :: HashMap Id Comb -> Exp -> Double
+evaluate :: Context -> Exp -> Double
 evaluate c e = case e of
                  Bin o a b -> op o (evaluate c a) (evaluate c b)
                  Exe f as -> case c !? f of

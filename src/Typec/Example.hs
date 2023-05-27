@@ -152,7 +152,7 @@ f3 = Fun
 {-
 x = 5
 main = x * 2
--}
+-} -- 10
 p1 :: Prog
 p1 = Prog $ fromList
   [
@@ -164,7 +164,7 @@ p1 = Prog $ fromList
 x = 5
 y = x * 2
 main = x + 1 - y
--}
+-} -- -4
 p2 :: Prog
 p2 = Prog $ fromList
   [
@@ -177,7 +177,7 @@ p2 = Prog $ fromList
 y = 5
 f x = y * 2 - x
 main = f 3 - 2 * y
--}
+-} -- -3
 p3 :: Prog
 p3 = Prog $ fromList
   [
@@ -199,7 +199,7 @@ g x y = f y * h x * 3 / z - 2 * w
   w = u + 2
 
 main = f 3 - 2 * z + g u z - z
--}
+-} -- -38
 p4 :: Prog
 p4 = Prog $ fromList
   [
@@ -224,7 +224,7 @@ p4 = Prog $ fromList
 
 {-
 main = 3 * 2
--}
+-} -- 6
 p5 :: Prog
 p5 = Prog $ fromList
   [
@@ -233,7 +233,7 @@ p5 = Prog $ fromList
 
 {-
 main = (3 + 2) / ((3 - 2) * 4 + 6)
--}
+-} -- 0.5
 p6 :: Prog
 p6 = Prog $ fromList
   [
@@ -243,7 +243,7 @@ p6 = Prog $ fromList
 {-
 f x = 2 - x
 main = f 3 - 2
--}
+-} -- -3
 p7 :: Prog
 p7 = Prog $ fromList
   [
@@ -290,7 +290,7 @@ x = 5
 y = x * 2
 z = x + 4 * y + b
 main = x + 1 - y / a - 2 * z + b * 3 / c
--}
+-} -- -81
 p9 :: Prog
 p9 = Prog $ fromList
   [

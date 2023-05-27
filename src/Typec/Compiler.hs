@@ -34,57 +34,62 @@ data Ins
 data Val
   = Con Int
   | Ref Int
+  | Tem String
 
 instance Show Ins where
   show (Two o a b) = show a <> show o <> show b
   show (Loa v) = show v
-  show (Sav v) = "$" <> v
+  show (Sav v) = v
 
 instance Show Val where
   show (Con x) = "C" <> show x
   show (Ref x) = "[" <> show x <> "]"
+  show (Tem x) = x
 
 class Spool a where
-  spool :: a -> Tape
+  spool :: Cons -> a -> Tape
 
 instance Spool Exp where
-  spool t = let es = flat t
-             in foldr (acc es) mempty es
+  spool cs t = let es = flat t
+                in foldr (acc es) (mempty,cs,mempty) es
    where
     flat e = case e of
                Bin _ a b -> flat' a <> flat' b <> [e]
                Val _ -> [e]
+               Var _ -> [e]
                _ -> mempty
     flat' e = case e of
-                Bin _ _ _ -> flat e
+                Bin {} -> flat e
                 _ -> mempty
-    acc es e (is, cs, vs) = case e of
-                              Bin o a b -> let (v1, cs1) = val a cs  es e
+    acc es e (is, cs', vs) = case e of
+                              Bin o a b -> let (v1, cs1) = val a cs' es e
                                                (v2, cs2) = val b cs1 es e
                                             in (Two o v1 v2 : is, cs2, vs)
-                              Val v -> let (c, cs') = lookupd v cs
-                                        in (Loa (Con c) : is, cs', vs)
+                              Val v -> let (c, cs1) = lookupd v cs'
+                                        in (Loa (Con c) : is, cs1, vs)
+                              Var (Id v) -> (Loa (Tem v) : is, cs', vs)
                               _ -> undefined
-    val e cs es e' = case e of
-                       Val v -> let (c, cs') = lookupd v cs
-                                 in (Con c, cs')
-                       _ -> (Ref $ index e es - index e' es, cs)
+    val e cs' es e' = case e of
+                        Val v -> let (c, cs1) = lookupd v cs'
+                                  in (Con c, cs1)
+                        Var (Id i) -> (Tem i, cs')
+                        _ -> (Ref $ index e es - index e' es, cs')
     index e es = fromJust $ elemIndex e es
     lookupd k m = case Data.HashMap.Strict.lookup k m of
                     Just v  -> (v, m)
                     Nothing -> let s = size m in (s, insert k s m)
 
 instance Spool Comb where
-  spool ((Id i) := e) = let (is, cs, _) = spool e
-                         in if i == "main"
-                            then (is,cs,mempty)
-                            else (is <> [Sav i], cs, [i])
+  spool cs ((Id i) := e) = let (is, cs', _) = spool cs e
+                            in if i == "main"
+                               then (is,cs',mempty)
+                               else (is <> [Sav i], cs', [i])
 
 instance Spool Prog where
-  spool p@(Prog c) = let cs' = flatten . graph $ p
-                       in foldr acc mempty cs'
+  spool _ p@(Prog c) = let cs' = flatten . graph $ p
+                        in foldr acc mempty cs'
    where
-    acc s (is,cs,vs) = let (is',cs',vs') = spool . fromJust $ c !? Id s
+    acc s (is,cs,vs) = let (is',cs',vs') = spool cs . fromJust $ c !? Id s
                         in (is' <> is,cs' <> cs,vs' <> vs)
 
 graph :: Prog -> Gr String String
@@ -146,16 +151,16 @@ text is = main <> concatMap block is <> fstp <> printf <> exit
  where
   block i = comment (show i) : instr i
   instr (Two o a b)
-    | isCon a && isCon b = [fld a, op1 o b]
-    | isCon a = [fld a, fxch, op0 o]
-    | isCon b = pure $ op1 o b
+    | notRef a && notRef b = [fld a, op1 o b]
+    | notRef a = [fld a, fxch, op0 o]
+    | notRef b = pure $ op1 o b
     | ref a < ref b = [op0 o]
     | ref a > ref b = [fxch, op0 o]
   instr (Loa c) = pure $ fld c
   instr (Sav v) = pure ("fstp        qword [" <> v <> "]")
-  isCon v = case v of
-              Con _ -> True
-              _ -> False
+  notRef v = case v of
+               Ref _ -> False
+               _ -> True
   ref (Ref x) = x
   fld v = "fld         qword [" <> show v <> "]"
   op1 o v = case o of

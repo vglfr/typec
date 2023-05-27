@@ -25,6 +25,11 @@ hello:
 	@ld asm/hello.o -o asm/hello 
 	@./asm/hello
 
+p9:
+	@nasm -felf64 asm/p9.s -o asm/p9.o
+	@gcc -z noexecstack asm/p9.o -o asm/p9
+	@./asm/p9
+
 printf:
 	@nasm -felf64 asm/printf.s -o asm/printf.o
 	@gcc -z noexecstack asm/printf.o -o asm/printf

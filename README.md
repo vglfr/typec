@@ -5,7 +5,6 @@
 + tree-walk interpreter
 
 - native asmgen
-  - sequence of expr
   - function
 
 - comparisons

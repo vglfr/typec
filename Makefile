@@ -20,6 +20,11 @@ fpoint:
 	@gcc -z noexecstack asm/fpoint.o -o asm/fpoint
 	@./asm/fpoint
 
+fn:
+	@nasm -felf64 asm/fn.s -o asm/fn.o
+	@gcc -z noexecstack asm/fn.o -o asm/fn
+	@./asm/fn
+
 hello:
 	@nasm -felf64 asm/hello.s -o asm/hello.o
 	@ld asm/hello.o -o asm/hello 

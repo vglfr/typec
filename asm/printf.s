@@ -8,7 +8,7 @@ main:
         push        rbp
 
         mov         rdi, FSTR
-        mov         rsi, -8
+        mov         rsi, rbp
         xor         rax, rax
         call        printf
 

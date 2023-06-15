@@ -1,46 +1,47 @@
-global main
-extern printf
-
-section .data
-        FST:        db "%i", 10, 0
+global _start
 
 section .bss
-        RES:        resq 1
+        RES:        resb 1
 
 section .text
-boilerplate:
-        push        rbp
+; _copy:
+;         mov         rax, [rsp+16]
+;         mov         [RES], rax
 
-        mov         rdi, FST
-        mov         rsi, [RES]
-        call        printf
-        pop         rbp
-
-        xor         rax, rax
+_print:
+        mov         rax, 1
+        mov         rdi, 1
+        mov         rsi, RES
+        mov         rdx, 1
+        syscall
         ret
 
-        ; exit
+_exit:
         mov         rax, 60
         xor         rdi, rdi
         syscall
-
-f:
-        ; mov         rbx, []
-        ; mov         rax, []
-        mov         rax, 2
-        add         rax, 1
-        ; add         rax, rbx
-        mov         [RES], rax
-        ; xor         rax, rax
-        ; ret
-
-main:
-        ; push        2
-        ; push        4
-
-        push        rbp
-        call        f
-        pop         rbp
         ret
-        ; mov         qword [RES], -6
-        jmp         boilerplate
+
+_add:
+        mov         rax, [rsp+16]
+        mov         rbx, [rsp+8]
+        add         rax, rbx
+        mov         [RES], rax
+        ret
+        
+_start:
+        ; mov         rax, 50
+        ; add         rax, 2
+        ; add         rax, rbx
+        ; mov         [RES], rax
+        ; mov         byte [RES], 52 ; 4
+
+        ; push        50 ; 50 = '2'
+        ; push        48 ; 48 = '0'
+        ; call        _copy
+
+        push        50   ; 50 = '2'
+        push        48   ; 48 = '0'
+        call        _add ; 98 = 'b'
+        call        _print
+        call        _exit

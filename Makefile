@@ -22,8 +22,13 @@ fpoint:
 
 fn:
 	@nasm -felf64 asm/fn.s -o asm/fn.o
-	@gcc -z noexecstack asm/fn.o -o asm/fn
+	@ld asm/fn.o -o asm/fn 
 	@./asm/fn
+
+# fn:
+# 	@nasm -felf64 asm/fn.s -o asm/fn.o
+# 	@gcc -z noexecstack asm/fn.o -o asm/fn
+# 	@./asm/fn
 
 hello:
 	@nasm -felf64 asm/hello.s -o asm/hello.o

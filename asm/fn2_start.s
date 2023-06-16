@@ -1,28 +1,37 @@
 global _start
-extern _exit
 
-section .bss
-        RES:        resb 1
+extern _add
+extern _exit
+extern _print_i8
 
 section .text
-_print:
-        mov         rax, 1
-        mov         rdi, 1
-        mov         rsi, RES
-        mov         rdx, 1
-        syscall
-        ret
-
-_add:
-        mov         rax, [rsp+16]
-        mov         rbx, [rsp+8]
-        add         rax, rbx
-        mov         [RES], rax
-        ret
-        
 _start:
+        push        24
+        push        24
+        call        _add         ; 48 = '0'
+        add         rsp, 16
+
+        push        rax
+        call        _print_i8
+        add         rsp, 8
+
         push        50           ; 50 = '2'
         push        48           ; 48 = '0'
         call        _add         ; 98 = 'b'
-        call        _print
+        add         rsp, 16
+
+        push        rax
+        call        _print_i8
+        add         rsp, 8
+
+        push        52
+        call        _print_i8
+        add         rsp, 8
+
+        push        50
+        call        _print_i8
+        add         rsp, 8
+
+        push        0
         call        _exit
+        add         rsp, 8

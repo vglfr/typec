@@ -9,8 +9,8 @@ clean:
 		asm/p9.o asm/p9 \
 		asm/hello.o asm/hello \
 		asm/fpoint.o asm/fpoint \
+		asm/fn2_add.o asm/fn2_exit.o asm/fn2_print_i8.o asm/fn2_start.o asm/fn2 \
 		asm/fn.o asm/fn \
-		asm/fn2.o asm/fn2 \
 		asm/dprint.o asm/dprint
 
 dprint:
@@ -24,9 +24,11 @@ fn:
 	@./asm/fn
 
 fn2:
-	@nasm -felf64 asm/fn2_start.s -o asm/fn2_start.o
+	@nasm -felf64 asm/fn2_add.s -o asm/fn2_add.o
 	@nasm -felf64 asm/fn2_exit.s -o asm/fn2_exit.o
-	@ld asm/fn2_exit.o asm/fn2_start.o -o asm/fn2
+	@nasm -felf64 asm/fn2_print_i8.s -o asm/fn2_print_i8.o
+	@nasm -felf64 asm/fn2_start.s -o asm/fn2_start.o
+	@ld asm/fn2_add.o asm/fn2_exit.o asm/fn2_print_i8.o asm/fn2_start.o -o asm/fn2
 	@./asm/fn2
 
 fpoint:

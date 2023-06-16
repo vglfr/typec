@@ -6,8 +6,11 @@ clean:
 	@rm -f \
 		asm/temp.s asm/temp.o asm/a.out \
 		asm/printf.o asm/printf \
+		asm/p9.o asm/p9 \
 		asm/hello.o asm/hello \
 		asm/fpoint.o asm/fpoint \
+		asm/fn.o asm/fn \
+		asm/fn2.o asm/fn2 \
 		asm/dprint.o asm/dprint
 
 dprint:
@@ -15,20 +18,21 @@ dprint:
 	@ld asm/dprint.o -o asm/dprint 
 	@./asm/dprint
 
-fpoint:
-	@nasm -felf64 asm/fpoint.s -o asm/fpoint.o
-	@gcc -z noexecstack asm/fpoint.o -o asm/fpoint
-	@./asm/fpoint
-
 fn:
 	@nasm -felf64 asm/fn.s -o asm/fn.o
 	@ld asm/fn.o -o asm/fn 
 	@./asm/fn
 
-# fn:
-# 	@nasm -felf64 asm/fn.s -o asm/fn.o
-# 	@gcc -z noexecstack asm/fn.o -o asm/fn
-# 	@./asm/fn
+fn2:
+	@nasm -felf64 asm/fn2_start.s -o asm/fn2_start.o
+	@nasm -felf64 asm/fn2_exit.s -o asm/fn2_exit.o
+	@ld asm/fn2_exit.o asm/fn2_start.o -o asm/fn2
+	@./asm/fn2
+
+fpoint:
+	@nasm -felf64 asm/fpoint.s -o asm/fpoint.o
+	@gcc -z noexecstack asm/fpoint.o -o asm/fpoint
+	@./asm/fpoint
 
 hello:
 	@nasm -felf64 asm/hello.s -o asm/hello.o

@@ -1,10 +1,9 @@
 global _printf_f64
+
 extern printf
 
 section .data
-        FST:        db "%i", 10, 0
-        ; FST:        db "%.2f", 10, 0
-        ; C1:         dq 3.3333333
+        FST:        db "%.2f", 10, 0
 
 section .text
 _printf_f64:
@@ -12,10 +11,8 @@ _printf_f64:
         mov         rbp, rsp
 
         mov         rdi, FST
-        mov         rsi, [rbp+16]
-        xor         rax, rax
-        ; movsd       xmm0, qword [C1]
-        ; mov         rax, 1
+        mov         rax, 1
+        movsd       xmm0, qword [rbp+16]
         call        printf
 
         pop         rbp

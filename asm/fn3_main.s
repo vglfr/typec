@@ -4,31 +4,39 @@ extern _exit
 extern _fadd
 extern _printf_f64
 
+section .data
+        C1:         dq 1.1111111
+        C2:         dq 2.2222222
+
 section .text
 main:
-        push        24
-        push        24
-        call        _fadd        ; 48 = '0'
+        push        qword [C1]
+        call        _printf_f64
+        add         rsp, 8
+
+        push        qword [C1]
+        push        qword [C2]
+        call        _fadd
         add         rsp, 16
 
         push        rax
         call        _printf_f64
         add         rsp, 8
 
-        push        50           ; 50 = '2'
-        push        48           ; 48 = '0'
-        call        _fadd        ; 98 = 'b'
+        push        qword [C1]
+        call        _printf_f64
+        add         rsp, 8
+
+        push        qword [C2]
+        push        qword [C2]
+        call        _fadd
         add         rsp, 16
 
         push        rax
         call        _printf_f64
         add         rsp, 8
 
-        push        52
-        call        _printf_f64
-        add         rsp, 8
-
-        push        50
+        push        qword [C1]
         call        _printf_f64
         add         rsp, 8
 

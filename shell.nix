@@ -16,6 +16,7 @@ in
     buildInputs = [
       pkgs.cabal-install
       pkgs.gcc
+      pkgs.gdb
       pkgs.haskell.compiler.ghc943
       pkgs.haskell-language-server
       pkgs.haskellPackages.hoogle

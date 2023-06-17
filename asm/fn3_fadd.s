@@ -1,13 +1,19 @@
 global _fadd
 
+section .bss
+        RES         resq 1
+
 section .text
 _fadd:
         push        rbp
         mov         rbp, rsp
 
-        mov         rax, [rbp+24]
-        mov         rbx, [rbp+16]
-        add         rax, rbx
+        fld         qword [rbp+24]
+        fld         qword [rbp+16]
+        fadd
+
+        fstp        qword [RES]
+        mov         rax, [RES]
 
         pop         rbp
         ret

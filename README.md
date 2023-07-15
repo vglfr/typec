@@ -5,6 +5,7 @@
 + tree-walk interpreter
 
 - native asmgen
+  - move existing asm to modules
   - function
 
 - comparisons

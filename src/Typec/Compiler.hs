@@ -21,6 +21,8 @@ import Typec.AST
   )
 import Data.Tuple (swap)
 
+type Module = (String, String)
+
 type Line = String
 type Cons = HashMap Double Int
 type Vars = [String]
@@ -117,6 +119,7 @@ compile :: Tape -> String
 compile (is, cs, vs) = unlines $ intercalate (pure mempty)
   [
     global
+  , extern
   , section ".data" (data' cs)
   , section ".bss"  (bss vs)
   , section ".text" (text is)
@@ -126,7 +129,12 @@ global :: [Line]
 global =
   [
     "global main"
-  , "extern printf"
+  ]
+
+extern :: [Line]
+extern =
+  [
+    "extern printf"
   ]
 
 section :: String -> [Line] -> [Line]
@@ -137,7 +145,8 @@ section s is = "section " <> s : fmap offset is
               else "        " <> cs
 
 data' :: Cons -> [Line]
-data' cs = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList cs)
+-- data' cs = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList cs)
+data' cs = fmap (uncurry fconst) (toList cs)
  where
   fconst k v = "C" <> show v <> ":         dq " <> show k
 
@@ -147,7 +156,7 @@ bss vs = "RES:        resq 1" : fmap fvar vs
   fvar v = v <> ":          resq 1"
 
 text :: [Ins] -> [Line]
-text is = main <> concatMap block is <> fstp <> printf <> exit
+text is = main <> concatMap block is -- <> fstp <> printf <> exit
  where
   block i = comment (show i) : instr i
   instr (Two o a b)
@@ -211,10 +220,93 @@ exit =
   , "syscall"
   ]
 
-run :: String -> IO ()
-run s = do
-  putStrLn s
-  writeFile "/tmp/temp.s" s
-  readProcess "nasm" ["-f", "elf64", "-o", "/tmp/temp.o", "/tmp/temp.s"] mempty >>= putStrLn
-  readProcess "gcc" ["-z", "noexecstack", "-o", "/tmp/temp", "-lc", "/tmp/temp.o"] mempty >>= putStrLn
-  readProcess "/tmp/temp" mempty mempty >>= putStrLn
+_exit :: [Line]
+_exit =
+  [
+    "global _exit"
+  , ""
+  , "section .text"
+  , "_exit:"
+  , "        push        rbp"
+  , "        mov         rbp, rsp"
+  , ""
+  , "        mov         rax, 60"
+  , "        mov         rdi, [rbp+16]"
+  , ""
+  , "        syscall"
+  , "        pop         rbp"
+  , "        ret"
+  ]
+
+_printf_f64 :: [Line]
+_printf_f64 =
+  [
+    "global _printf_f64"
+  , ""
+  , "extern printf"
+  , ""
+  , "section .data"
+  , "        FST:        db \"%.2f\", 10, 0"
+  , ""
+  , "section .text"
+  , "_printf_f64:"
+  , "        push        rbp"
+  , "        mov         rbp, rsp"
+  , ""
+  , "        mov         rdi, FST"
+  , "        mov         rax, 1"
+  , "        movsd       xmm0, qword [rbp+16]"
+  , "        call        printf"
+  , ""
+  , "        pop         rbp"
+  , "        xor         rax, rax"
+  , "        ret"
+  ]
+
+_main :: Tape -> [Line]
+_main (is, cs, vs) =
+  [
+    "global main"
+  , ""
+  , "extern _exit"
+  , "extern _printf_f64"
+  , ""
+  , unlines $ section ".data" (data' cs)
+  , ""
+  , unlines $ section ".bss"  (bss vs)
+  , ""
+  , unlines $ section ".text" (text is) <> pushNcall
+  ]
+ where
+  pushNcall =
+    [
+      ""
+    , "        fstp        qword [RES]"
+    , "        mov         rax, [RES]"
+    , ""
+    , "        push        rax"
+    , "        call        _printf_f64"
+    , "        add         rsp, 8"
+    , ""
+    , "        push        0"
+    , "        call        _exit"
+    , "        add         rsp, 8"
+    ]
+compile_ :: Tape -> [Module]
+compile_ t =
+  [
+    ("_exit", unlines _exit)
+  , ("_printf_f64", unlines _printf_f64)
+  , ("main", unlines $ _main t)
+  ]
+
+run :: [Module] -> IO ()
+-- run ms = do
+run _ = do
+  -- make hash based temp dir
+  -- mapM_ (\(_,c) -> putStrLn c) ms
+  -- mapM_ (\(n,c) -> writeFile ("/tmp/typec/" <> n <> ".s") c) ms
+  -- mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", "/tmp/typec/" <> n <> ".s", "-o", "/tmp/typec/" <> n <> ".o"] mempty) ms
+  -- readProcess "gcc" (["-z", "noexecstack", "-o", "/tmp/typec/a.out"] <> map (\(n,_) -> "/tmp/typec/" <> n <> ".o") ms) mempty >>= putStrLn
+  readProcess "asm/fn4" mempty mempty >>= putStrLn
+  -- clean temp dir

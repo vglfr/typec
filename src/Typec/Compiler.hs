@@ -6,9 +6,12 @@ import Prelude hiding (div)
 
 import Data.List (elemIndex, intercalate, lookup, nub)
 import Data.Maybe (fromJust)
+import Data.Tuple (swap)
+import Numeric (showHex)
 
 import Data.Graph.Inductive (Adj, Context, Gr, buildGr, postorder, dff, labNodes, lab)
 import Data.HashMap.Strict ((!?), HashMap, insert, lookup, size, toList)
+import Data.Hashable (hash)
 import System.Directory (createDirectoryIfMissing)
 import System.Process (readProcess)
 
@@ -20,8 +23,6 @@ import Typec.AST
   , Op (Add, Div, Mul, Sub)
   , Prog (Prog)
   )
-import Data.Tuple (swap)
-import Data.Word (Word32)
 
 type Module = (String, String)
 
@@ -279,30 +280,15 @@ compile_ t =
   , ("main", unlines $ _main t)
   ]
 
-murmur :: String -> String
-murmur cs = let ps = part4 cs
-                as = init ps
-                b  = last ps
-             in undefined
- where
-  part4 [] = []
-  part4 xs = let (as, bs) = splitAt 4 xs
-              in as : part4 bs
-  mid :: Word32 -> Word32 -> Word32
-  mid = undefined
-  fin :: Word32 -> Word32
-  fin = undefined
-
 run :: [Module] -> IO ()
 run ms = do
   mapM_ (createDirectoryIfMissing True) [aDir, oDir]
   mapM_ (\(_,c) -> putStrLn c) ms
   mapM_ (\(n,c) -> writeFile (aDir <> n <> ".s") c) ms
   mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", aDir <> n <> ".s", "-o", oDir <> n <> ".o"] mempty) ms
-  readProcess "gcc" (["-z", "noexecstack", "-o", hDir <> "/a.out"] <> map (\(n,_) -> oDir <> n <> ".o") ms) mempty >>= putStrLn
-  readProcess (hDir <> "/a.out") mempty mempty >>= putStrLn
+  readProcess "gcc" (["-z", "noexecstack", "-o", hDir <> "a.out"] <> map (\(n,_) -> oDir <> n <> ".o") ms) mempty >>= putStrLn
+  readProcess (hDir <> "a.out") mempty mempty >>= putStrLn
  where
-  aDir = hDir <> "/asm"
-  oDir = hDir <> "/obj"
-  hDir = "/tmp/typec/" <> murmur (concatMap snd ms)
-  -- clean temp dir
+  aDir = hDir <> "/asm/"
+  oDir = hDir <> "/obj/"
+  hDir = "/tmp/typec/" <> showHex (abs . hash . concatMap snd $ ms) mempty <> "/"

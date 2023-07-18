@@ -9,6 +9,7 @@ import Data.Maybe (fromJust)
 
 import Data.Graph.Inductive (Adj, Context, Gr, buildGr, postorder, dff, labNodes, lab)
 import Data.HashMap.Strict ((!?), HashMap, insert, lookup, size, toList)
+import System.Directory (createDirectoryIfMissing)
 import System.Process (readProcess)
 
 import Typec.AST
@@ -20,6 +21,7 @@ import Typec.AST
   , Prog (Prog)
   )
 import Data.Tuple (swap)
+import Data.Word (Word32)
 
 type Module = (String, String)
 
@@ -269,6 +271,7 @@ _main (is, cs, vs) =
     , "        call        _printf_f64"
     , "        add         rsp, 8"
     ]
+
 compile_ :: Tape -> [Module]
 compile_ t =
   [
@@ -276,12 +279,30 @@ compile_ t =
   , ("main", unlines $ _main t)
   ]
 
+murmur :: String -> String
+murmur cs = let ps = part4 cs
+                as = init ps
+                b  = last ps
+             in undefined
+ where
+  part4 [] = []
+  part4 xs = let (as, bs) = splitAt 4 xs
+              in as : part4 bs
+  mid :: Word32 -> Word32 -> Word32
+  mid = undefined
+  fin :: Word32 -> Word32
+  fin = undefined
+
 run :: [Module] -> IO ()
 run ms = do
-  -- make hash based temp dir
+  mapM_ (createDirectoryIfMissing True) [aDir, oDir]
   mapM_ (\(_,c) -> putStrLn c) ms
-  mapM_ (\(n,c) -> writeFile ("/tmp/typec/" <> n <> ".s") c) ms
-  mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", "/tmp/typec/" <> n <> ".s", "-o", "/tmp/typec/" <> n <> ".o"] mempty) ms
-  readProcess "gcc" (["-z", "noexecstack", "-o", "/tmp/typec/a.out"] <> map (\(n,_) -> "/tmp/typec/" <> n <> ".o") ms) mempty >>= putStrLn
-  readProcess "/tmp/typec/a.out" mempty mempty >>= putStrLn
+  mapM_ (\(n,c) -> writeFile (aDir <> n <> ".s") c) ms
+  mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", aDir <> n <> ".s", "-o", oDir <> n <> ".o"] mempty) ms
+  readProcess "gcc" (["-z", "noexecstack", "-o", hDir <> "/a.out"] <> map (\(n,_) -> oDir <> n <> ".o") ms) mempty >>= putStrLn
+  readProcess (hDir <> "/a.out") mempty mempty >>= putStrLn
+ where
+  aDir = hDir <> "/asm"
+  oDir = hDir <> "/obj"
+  hDir = "/tmp/typec/" <> murmur (concatMap snd ms)
   -- clean temp dir

@@ -1,6 +1,5 @@
 global main
 
-extern _exit
 extern _printf_f64
 
 section .data
@@ -21,8 +20,4 @@ main:
 
         push        rax
         call        _printf_f64
-        add         rsp, 8
-
-        push        0
-        call        _exit
         add         rsp, 8

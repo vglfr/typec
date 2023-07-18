@@ -1,6 +1,6 @@
 .PHONY : asm
 
-cpath = /nix/store/8xk4yl1r3n6kbyn05qhan7nbag7npymx-glibc-2.35-224/lib
+cpath = /nix/store/yaz7pyf0ah88g2v505l38n0f3wg2vzdj-glibc-2.37-8/lib
 
 clean:
 	@rm -f \
@@ -46,11 +46,9 @@ fn3:
 	@./asm/fn3
 
 fn4:
-	@nasm -g -felf64 asm/fn4_exit.s -o asm/fn4_exit.o
 	@nasm -g -felf64 asm/fn4_printf_f64.s -o asm/fn4_printf_f64.o
 	@nasm -g -felf64 asm/fn4_main.s -o asm/fn4_main.o
 	@gcc -z noexecstack -o asm/fn4 \
-		asm/fn4_exit.o \
 		asm/fn4_printf_f64.o \
 		asm/fn4_main.o
 	@./asm/fn4

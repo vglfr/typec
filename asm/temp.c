@@ -1,7 +1,7 @@
-// #include <stdio.h>
+#include <stdio.h>
 
 int main() {
-  int d = (4 - 2 * 6 / 1) * 3 + 1 / ((2 - 3) * 3 / (1 + 2));
-  // printf("%i", d);
+  double d = (4.0d - 2.0d * 6.0d / 1.0d) * 3.0d + 1.0d / ((2.0d - 3.0d) * 3.0d / (1.0d + 2.0d));
+  printf("%.2f", d);
   return 0;
 }

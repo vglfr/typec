@@ -220,24 +220,6 @@ exit =
   , "syscall"
   ]
 
-_exit :: [Line]
-_exit =
-  [
-    "global _exit"
-  , ""
-  , "section .text"
-  , "_exit:"
-  , "        push        rbp"
-  , "        mov         rbp, rsp"
-  , ""
-  , "        mov         rax, 60"
-  , "        mov         rdi, [rbp+16]"
-  , ""
-  , "        syscall"
-  , "        pop         rbp"
-  , "        ret"
-  ]
-
 _printf_f64 :: [Line]
 _printf_f64 =
   [
@@ -268,7 +250,6 @@ _main (is, cs, vs) =
   [
     "global main"
   , ""
-  , "extern _exit"
   , "extern _printf_f64"
   , ""
   , unlines $ section ".data" (data' cs)
@@ -287,26 +268,20 @@ _main (is, cs, vs) =
     , "        push        rax"
     , "        call        _printf_f64"
     , "        add         rsp, 8"
-    , ""
-    , "        push        0"
-    , "        call        _exit"
-    , "        add         rsp, 8"
     ]
 compile_ :: Tape -> [Module]
 compile_ t =
   [
-    ("_exit", unlines _exit)
-  , ("_printf_f64", unlines _printf_f64)
+    ("_printf_f64", unlines _printf_f64)
   , ("main", unlines $ _main t)
   ]
 
 run :: [Module] -> IO ()
--- run ms = do
-run _ = do
+run ms = do
   -- make hash based temp dir
-  -- mapM_ (\(_,c) -> putStrLn c) ms
-  -- mapM_ (\(n,c) -> writeFile ("/tmp/typec/" <> n <> ".s") c) ms
-  -- mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", "/tmp/typec/" <> n <> ".s", "-o", "/tmp/typec/" <> n <> ".o"] mempty) ms
-  -- readProcess "gcc" (["-z", "noexecstack", "-o", "/tmp/typec/a.out"] <> map (\(n,_) -> "/tmp/typec/" <> n <> ".o") ms) mempty >>= putStrLn
-  readProcess "asm/fn4" mempty mempty >>= putStrLn
+  mapM_ (\(_,c) -> putStrLn c) ms
+  mapM_ (\(n,c) -> writeFile ("/tmp/typec/" <> n <> ".s") c) ms
+  mapM_ (\(n,_) -> readProcess "nasm" ["-g", "-f", "elf64", "/tmp/typec/" <> n <> ".s", "-o", "/tmp/typec/" <> n <> ".o"] mempty) ms
+  readProcess "gcc" (["-z", "noexecstack", "-o", "/tmp/typec/a.out"] <> map (\(n,_) -> "/tmp/typec/" <> n <> ".o") ms) mempty >>= putStrLn
+  readProcess "/tmp/typec/a.out" mempty mempty >>= putStrLn
   -- clean temp dir

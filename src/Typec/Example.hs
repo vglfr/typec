@@ -81,6 +81,14 @@ b9 = Bin Sub (Bin Add 5 (Exe "f" ("x" :| [Bin Sub 3 "y"]))) 3
 b10 :: Exp
 b10 = Bin Mul "x" 2
 
+{- 5 + 1 - 3 + 6 -}
+b11 :: Exp
+b11 = Bin Add (Bin Sub (Bin Add 5 1) 3) 6
+
+{- 5 + 1 - 3 -}
+b12 :: Exp
+b12 = Bin Sub (Bin Add 5 1) 3
+
 {- f 5 -}
 e1 :: Exp
 e1 = Exe "f" (5 :| [])

@@ -113,9 +113,9 @@ graph (Prog cs) = let (ks,vs) = unzip . toList $ cs
   -- throw "undefined reference" on lookup error
 
 flatten :: Gr String String -> [String]
-flatten g = fmap (fromJust . lab g) . postorder . head . dff [main'] $ g
+flatten g = fmap (fromJust . lab g) . postorder . head . dff [main''] $ g
  where
-  main' = fromJust . Data.List.lookup "main" . fmap swap . labNodes $ g
+  main'' = fromJust . Data.List.lookup "main" . fmap swap . labNodes $ g
   -- throw "cyclic reference" on bidirectioned edge
 
 compile :: Tape -> String
@@ -223,46 +223,50 @@ exit =
   , "syscall"
   ]
 
-_printf_f64 :: [Line]
-_printf_f64 =
+printf64 :: Module
+printf64 = ("_printf_f64",) . unlines . intercalate (pure mempty) $
   [
-    "global _printf_f64"
-  , ""
-  , "extern printf"
-  , ""
-  , "section .data"
-  , "        FST:        db \"%.2f\", 10, 0"
-  , ""
-  , "section .text"
-  , "_printf_f64:"
-  , "        push        rbp"
-  , "        mov         rbp, rsp"
-  , ""
-  , "        mov         rdi, FST"
-  , "        mov         rax, 1"
-  , "        movsd       xmm0, qword [rbp+16]"
-  , "        call        printf"
-  , ""
-  , "        pop         rbp"
-  , "        xor         rax, rax"
-  , "        ret"
-  ]
-
-_main :: Tape -> [Line]
-_main (is, cs, vs) =
-  [
-    "global main"
-  , ""
-  , "extern _printf_f64"
-  , ""
-  , unlines $ section ".data" (data' cs)
-  , ""
-  , unlines $ section ".bss"  (bss vs)
-  , ""
-  , unlines $ section ".text" (text is) <> pushNcall
+    global'
+  , extern'
+  , data''
+  , text'
   ]
  where
-  pushNcall =
+  global' = pure "global _printf_f64"
+  extern' = pure "extern printf"
+  data'' =
+    [
+      "section .data"
+    , "        FST:        db \"%.2f\", 10, 0"
+    ]
+  text' =
+    [
+      "section .text"
+    , "_printf_f64:"
+    , "        push        rbp"
+    , "        mov         rbp, rsp"
+    , ""
+    , "        mov         rdi, FST"
+    , "        mov         rax, 1"
+    , "        movsd       xmm0, qword [rbp+16]"
+    , "        call        printf"
+    , ""
+    , "        pop         rbp"
+    , "        xor         rax, rax"
+    , "        ret"
+    ]
+
+main' :: Tape -> Module
+main' (is, cs, vs) = ("main",) . unlines . intercalate (pure mempty) $
+  [
+    pure "global main"
+  , pure "extern _printf_f64"
+  , section ".data" (data' cs)
+  , section ".bss"  (bss vs)
+  , section ".text" (text is) <> print'
+  ]
+ where
+  print' =
     [
       ""
     , "        fstp        qword [RES]"
@@ -271,17 +275,15 @@ _main (is, cs, vs) =
     , "        push        rax"
     , "        call        _printf_f64"
     , "        add         rsp, 8"
+    , ""
+    , "        ret"
     ]
 
-compile_ :: Tape -> [Module]
-compile_ t =
-  [
-    ("_printf_f64", unlines _printf_f64)
-  , ("main", unlines $ _main t)
-  ]
+compile' :: Tape -> [Module]
+compile' t = [printf64 , main' t]
 
-run :: [Module] -> IO ()
-run ms = do
+run :: [Module] -> String -> IO ()
+run ms s = do
   mapM_ (createDirectoryIfMissing True) [aDir, oDir]
   mapM_ (\(_,c) -> putStrLn c) ms
   mapM_ (\(n,c) -> writeFile (aDir <> n <> ".s") c) ms
@@ -291,4 +293,4 @@ run ms = do
  where
   aDir = hDir <> "/asm/"
   oDir = hDir <> "/obj/"
-  hDir = "/tmp/typec/" <> showHex (abs . hash . concatMap snd $ ms) mempty <> "/"
+  hDir = "/tmp/typec/" <> showHex (abs . hash . concatMap snd $ ms) mempty <> "-" <> s <> "/"

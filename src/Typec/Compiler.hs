@@ -118,28 +118,6 @@ flatten g = fmap (fromJust . lab g) . postorder . head . dff [main''] $ g
   main'' = fromJust . Data.List.lookup "main" . fmap swap . labNodes $ g
   -- throw "cyclic reference" on bidirectioned edge
 
-compile :: Tape -> String
-compile (is, cs, vs) = unlines $ intercalate (pure mempty)
-  [
-    global
-  , extern
-  , section ".data" (data' cs)
-  , section ".bss"  (bss vs)
-  , section ".text" (text is)
-  ]
-
-global :: [Line]
-global =
-  [
-    "global main"
-  ]
-
-extern :: [Line]
-extern =
-  [
-    "extern printf"
-  ]
-
 section :: String -> [Line] -> [Line]
 section s is = "section " <> s : fmap offset is
  where
@@ -148,7 +126,6 @@ section s is = "section " <> s : fmap offset is
               else "        " <> cs
 
 data' :: Cons -> [Line]
--- data' cs = "FST:        db \"%.2f\", 10, 0" : fmap (uncurry fconst) (toList cs)
 data' cs = fmap (uncurry fconst) (toList cs)
  where
   fconst k v = "C" <> show v <> ":         dq " <> show k
@@ -159,7 +136,7 @@ bss vs = "RES:        resq 1" : fmap fvar vs
   fvar v = v <> ":          resq 1"
 
 text :: [Ins] -> [Line]
-text is = main <> concatMap block is -- <> fstp <> printf <> exit
+text is = main' <> concatMap block is
  where
   block i = comment (show i) : instr i
   instr (Two o a b)
@@ -186,54 +163,26 @@ text is = main <> concatMap block is -- <> fstp <> printf <> exit
             Sub -> "fsubp"
             Mul -> "fmulp"
             Div -> "fdivp"
+  main' = pure "main:"
 
 comment :: String -> Line
 comment s = "; " <> s
 
-main :: [Line]
-main = pure "main:"
+global :: String -> [Line]
+global s = pure $ "global " <> s
 
-fstp :: [Line]
-fstp =
-  [
-    comment "fstp"
-  , "fstp        qword [RES]"
-  ]
-
-printf :: [Line]
-printf =
-  [
-    comment "printf"
-  , "push        rbp"
-  , "movsd       xmm0, qword [RES]"
-  , "mov         rdi, FST"
-  , "mov         rax, 1"
-  , "call        printf"
-  , "pop         rbp"
-  , "xor         rax, rax"
-  , "ret"
-  ]
-
-exit :: [Line]
-exit =
-  [
-    comment "exit"
-  , "mov         rax, 60"
-  , "xor         rdi, rdi"
-  , "syscall"
-  ]
+extern :: String -> [Line]
+extern s = pure $ "extern " <> s
 
 printf64 :: Module
 printf64 = ("_printf_f64",) . unlines . intercalate (pure mempty) $
   [
-    global'
-  , extern'
+    global "_printf_f64"
+  , extern "printf"
   , data''
   , text'
   ]
  where
-  global' = pure "global _printf_f64"
-  extern' = pure "extern printf"
   data'' =
     [
       "section .data"
@@ -256,11 +205,11 @@ printf64 = ("_printf_f64",) . unlines . intercalate (pure mempty) $
     , "        ret"
     ]
 
-main' :: Tape -> Module
-main' (is, cs, vs) = ("main",) . unlines . intercalate (pure mempty) $
+main :: Tape -> Module
+main (is, cs, vs) = ("main",) . unlines . intercalate (pure mempty) $
   [
-    pure "global main"
-  , pure "extern _printf_f64"
+    global "main"
+  , extern "_printf_f64"
   , section ".data" (data' cs)
   , section ".bss"  (bss vs)
   , section ".text" (text is) <> print'
@@ -274,13 +223,13 @@ main' (is, cs, vs) = ("main",) . unlines . intercalate (pure mempty) $
     , ""
     , "        push        rax"
     , "        call        _printf_f64"
-    , "        add         rsp, 8"
     , ""
+    , "        add         rsp, 8"
     , "        ret"
     ]
 
-compile' :: Tape -> [Module]
-compile' t = [printf64 , main' t]
+compile :: Tape -> [Module]
+compile t = [printf64, main t]
 
 run :: [Module] -> String -> IO ()
 run ms s = do
@@ -293,4 +242,4 @@ run ms s = do
  where
   aDir = hDir <> "/asm/"
   oDir = hDir <> "/obj/"
-  hDir = "/tmp/typec/" <> showHex (abs . hash . concatMap snd $ ms) mempty <> "-" <> s <> "/"
+  hDir = "/tmp/typec/" <> s <> "-" <> showHex (abs . hash . concatMap snd $ ms) mempty <> "/"

@@ -41,31 +41,31 @@ w1 = "x"
 w2 :: Exp
 w2 = "yY32_"
 
-{- 1 + 2 -}
+{- 1 + 2 -} -- 3
 b1 :: Exp
 b1 = Bin Add 1 2
 
-{- 1 - 2 -}
+{- 1 - 2 -} -- -1
 b2 :: Exp
 b2 = Bin Sub 1 2
 
-{- 1 * 2 -}
+{- 1 * 2 -} -- 2
 b3 :: Exp
 b3 = Bin Mul 1 2
 
-{- 1 / 2 -}
+{- 1 / 2 -} -- 0.5
 b4 :: Exp
 b4 = Bin Div 1 2
 
-{- -1 + 2 -}
+{- -1 + 2 -} -- 1
 b5 :: Exp
 b5 = Bin Add (-1) 2
 
-{- 1 - -2 -}
+{- 1 - -2 -} -- 3
 b6 :: Exp
 b6 = Bin Sub 1 (-2)
 
-{- 5 + 1 - 3 + 6 * 2 / 4 -}
+{- 5 + 1 - 3 + 6 * 2 / 4 -} -- 6
 b7 :: Exp
 b7 = Bin Add (Bin Sub (Bin Add 5 1) 3) (Bin Div (Bin Mul 6 2) 4)
 
@@ -129,7 +129,7 @@ a3 = "x" := Bin Add 5 "y"
 a4 :: Comb
 a4 = "x" := Bin Add 5 (Exe "f" ("y" :| []))
 
-{- main = 5 -}
+{- main = 5 -} -- 5
 a5 :: Comb
 a5 = "main" := 5
 
